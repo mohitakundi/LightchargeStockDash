@@ -3272,9 +3272,20 @@
         function renderPSGauge(data) {
             const ov = data.overview || {};
             const quote = data.quote?.['Global Quote'] || {};
+            const income = data.income?.annualReports || [];
 
-            // Get Price/Sales ratio
-            const ps = parseFloat(ov.PriceToSalesRatioTTM);
+            // Get Price/Sales ratio - try direct value first, then calculate
+            let ps = parseFloat(ov.PriceToSalesRatioTTM);
+
+            // If not available, calculate: P/S = Market Cap / Revenue (TTM)
+            if (!ps || isNaN(ps)) {
+                const marketCap = parseFloat(ov.MarketCapitalization);
+                const revenueTTM = parseFloat(income[0]?.totalRevenue); // Most recent annual revenue
+
+                if (marketCap && revenueTTM && revenueTTM > 0) {
+                    ps = marketCap / revenueTTM;
+                }
+            }
 
             // Get sector benchmark for P/S
             const sector = ov.Sector || 'DEFAULT';
