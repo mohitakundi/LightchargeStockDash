@@ -1479,18 +1479,44 @@
         function applyAIProjections(proj) {
             if (!proj) return;
 
+            // Normalize AI format (bull/base/bear objects) to expected format (revenue_growth/pat_growth/target_pe)
+            // AI returns: { bull: {revenueGrowth, patGrowth, targetPE}, base: {...}, bear: {...} }
+            // Expected: { revenue_growth: {bull, base, bear}, pat_growth: {...}, target_pe: {...} }
+            let normalized = proj;
+
+            if (proj.bull && proj.base && proj.bear) {
+                // Convert from AI format to expected format
+                normalized = {
+                    revenue_growth: {
+                        bull: proj.bull.revenueGrowth || 0,
+                        base: proj.base.revenueGrowth || 0,
+                        bear: proj.bear.revenueGrowth || 0
+                    },
+                    pat_growth: {
+                        bull: proj.bull.patGrowth || 0,
+                        base: proj.base.patGrowth || 0,
+                        bear: proj.bear.patGrowth || 0
+                    },
+                    target_pe: {
+                        bull: proj.bull.targetPE || 0,
+                        base: proj.base.targetPE || 0,
+                        bear: proj.bear.targetPE || 0
+                    }
+                };
+            }
+
             // Check if it's complex (year-by-year) or simple projection
-            if (proj.years && proj.years.length > 0) {
+            if (normalized.years && normalized.years.length > 0) {
                 // Complex mode - switch to complex and fill year-by-year
                 document.getElementById('calc-mode-toggle').checked = true;
                 calcMode = 'complex';
 
                 // Update exit year to match projection
-                document.getElementById('exitYear').value = proj.years.length;
+                document.getElementById('exitYear').value = normalized.years.length;
 
                 // Fill complex data using the correct structure
                 complexData = [{ rev: { bull: 0, base: 0, bear: 0 }, pat: { bull: 0, base: 0, bear: 0 }, pe: { bull: 0, base: 0, bear: 0 } }];
-                proj.years.forEach(y => {
+                normalized.years.forEach(y => {
                     complexData.push({
                         rev: {
                             bull: y.revenue?.bull || y.bull || 15,
@@ -1503,17 +1529,15 @@
                             bear: y.pat?.bear || y.bear || 5
                         },
                         pe: {
-                            bull: proj.target_pe?.bull || 30,
-                            base: proj.target_pe?.base || 25,
-                            bear: proj.target_pe?.bear || 20
+                            bull: normalized.target_pe?.bull || 30,
+                            base: normalized.target_pe?.base || 25,
+                            bear: normalized.target_pe?.bear || 20
                         }
                     });
                 });
 
                 // Reinitialize calculator and render
                 initCalculatorState();
-
-                addAIMessage("✅ Applied year-by-year projections! Switched to Complex mode.", false);
                 calculateProjections();
             } else {
                 // Simple mode
@@ -1525,36 +1549,34 @@
 
                 // Now fill the simple inputs with correct IDs (camelCase)
                 setTimeout(() => {
-                    if (proj.revenue_growth) {
+                    if (normalized.revenue_growth) {
                         const revBull = document.getElementById('revBull');
                         const revBase = document.getElementById('revBase');
                         const revBear = document.getElementById('revBear');
-                        if (revBull) revBull.value = proj.revenue_growth.bull || '';
-                        if (revBase) revBase.value = proj.revenue_growth.base || '';
-                        if (revBear) revBear.value = proj.revenue_growth.bear || '';
+                        if (revBull) revBull.value = normalized.revenue_growth.bull || '';
+                        if (revBase) revBase.value = normalized.revenue_growth.base || '';
+                        if (revBear) revBear.value = normalized.revenue_growth.bear || '';
                     }
-                    if (proj.pat_growth) {
+                    if (normalized.pat_growth) {
                         const patBull = document.getElementById('patBull');
                         const patBase = document.getElementById('patBase');
                         const patBear = document.getElementById('patBear');
-                        if (patBull) patBull.value = proj.pat_growth.bull || '';
-                        if (patBase) patBase.value = proj.pat_growth.base || '';
-                        if (patBear) patBear.value = proj.pat_growth.bear || '';
+                        if (patBull) patBull.value = normalized.pat_growth.bull || '';
+                        if (patBase) patBase.value = normalized.pat_growth.base || '';
+                        if (patBear) patBear.value = normalized.pat_growth.bear || '';
                     }
-                    if (proj.target_pe) {
+                    if (normalized.target_pe) {
                         const peBull = document.getElementById('peBull');
                         const peBase = document.getElementById('peBase');
                         const peBear = document.getElementById('peBear');
-                        if (peBull) peBull.value = proj.target_pe.bull || '';
-                        if (peBase) peBase.value = proj.target_pe.base || '';
-                        if (peBear) peBear.value = proj.target_pe.bear || '';
+                        if (peBull) peBull.value = normalized.target_pe.bull || '';
+                        if (peBase) peBase.value = normalized.target_pe.base || '';
+                        if (peBear) peBear.value = normalized.target_pe.bear || '';
                     }
 
                     // Trigger calculation
                     calculateProjections();
-                }, 50);
-
-                addAIMessage("✅ Applied projections to calculator!", false);
+                }, 100);
             }
         }
 
