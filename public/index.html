@@ -598,10 +598,61 @@
                     </div>
                     <div class="flex items-center gap-2">
                         <span id="dcf-fcf-label" class="text-xs text-gray-500">FCF: -</span>
-                        <button type="button" onclick="calculateDCF()"
+                        <button type="button"
+                            onclick="document.getElementById('dcf-ai-panel').classList.toggle('hidden')"
                             class="px-3 py-1.5 bg-emerald-600 text-white text-sm rounded-lg hover:bg-emerald-700 transition flex items-center gap-1">
-                            <i data-lucide="refresh-cw" class="w-4 h-4"></i> Calculate
+                            <i data-lucide="sparkles" class="w-4 h-4"></i> AI Suggest
                         </button>
+                    </div>
+                </div>
+
+                <!-- AI Assistant Panel (Hidden by default) -->
+                <div id="dcf-ai-panel"
+                    class="hidden mb-4 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl border border-emerald-200 overflow-hidden">
+                    <div class="p-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white">
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="sparkles" class="w-4 h-4"></i>
+                            <span class="font-bold text-sm">DCF AI Assistant</span>
+                        </div>
+                    </div>
+
+                    <!-- Quick Prompts -->
+                    <div class="p-3 border-b border-emerald-100">
+                        <p class="text-xs text-emerald-700 mb-2 font-medium">Quick Actions:</p>
+                        <div class="flex flex-wrap gap-2">
+                            <button onclick="quickDCFAI('Suggest appropriate DCF parameters for this stock')"
+                                class="text-sm bg-white border border-emerald-200 px-3 py-1.5 rounded-full hover:bg-emerald-100 transition">
+                                📊 Suggest Parameters
+                            </button>
+                            <button onclick="quickDCFAI('What discount rate (WACC) should I use?')"
+                                class="text-sm bg-white border border-emerald-200 px-3 py-1.5 rounded-full hover:bg-emerald-100 transition">
+                                💰 WACC Help
+                            </button>
+                            <button onclick="quickDCFAI('Is this stock undervalued or overvalued based on DCF?')"
+                                class="text-sm bg-white border border-emerald-200 px-3 py-1.5 rounded-full hover:bg-emerald-100 transition">
+                                📈 Valuation
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Messages -->
+                    <div id="dcf-ai-messages" class="h-48 overflow-y-auto p-4 space-y-3">
+                        <div class="ai-message bg-white rounded-lg p-3 text-sm text-gray-600">
+                            👋 Ask me for DCF parameter suggestions or valuation questions!
+                        </div>
+                    </div>
+
+                    <!-- Input -->
+                    <div class="p-3 bg-white border-t border-emerald-100">
+                        <div class="flex gap-2">
+                            <input type="text" id="dcf-ai-input" placeholder="Ask about DCF valuation..."
+                                class="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                onkeypress="if(event.key==='Enter') sendDCFAIMessage()">
+                            <button onclick="sendDCFAIMessage()"
+                                class="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition">
+                                <i data-lucide="send" class="w-4 h-4"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -1680,6 +1731,169 @@
                     // Trigger calculation
                     calculateProjections();
                 }, 100);
+            }
+        }
+
+        // --- DCF AI ASSISTANT ---
+        function quickDCFAI(prompt) {
+            document.getElementById('dcf-ai-input').value = prompt;
+            sendDCFAIMessage();
+        }
+
+        function addDCFAIMessage(content, isUser = false, dcfParams = null) {
+            const container = document.getElementById('dcf-ai-messages');
+            const msgDiv = document.createElement('div');
+            msgDiv.className = isUser
+                ? 'user-message bg-emerald-100 rounded-lg p-3 text-sm ml-6'
+                : 'ai-message bg-white rounded-lg p-3 text-sm';
+
+            const formattedContent = isUser ? content : formatMarkdown(content);
+            msgDiv.innerHTML = `<div class="text-gray-700 leading-relaxed">${formattedContent}</div>`;
+
+            // Add DCF Parameters card if provided
+            if (dcfParams && !isUser) {
+                const paramCard = document.createElement('div');
+                paramCard.className = 'mt-3 bg-emerald-50 rounded-lg p-3 border border-emerald-100';
+                paramCard.innerHTML = `
+                    <div class="font-bold text-emerald-700 text-xs mb-2 flex items-center gap-1">
+                        <i data-lucide="sliders" class="w-3 h-3"></i> Suggested DCF Parameters:
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                        <div>Growth Rate: <span class="font-bold text-emerald-600">${dcfParams.growthRate || 10}%</span></div>
+                        <div>Discount Rate: <span class="font-bold text-amber-600">${dcfParams.discountRate || 10}%</span></div>
+                        <div>Terminal Growth: <span class="font-bold text-blue-600">${dcfParams.terminalGrowth || 2.5}%</span></div>
+                        <div>Projection Years: <span class="font-bold text-purple-600">${dcfParams.years || 5} yrs</span></div>
+                    </div>
+                `;
+                msgDiv.appendChild(paramCard);
+
+                // Auto-apply parameters
+                applyDCFParameters(dcfParams);
+
+                // Show applied notice
+                const notice = document.createElement('div');
+                notice.className = 'mt-2 text-xs text-green-600 font-medium flex items-center gap-1';
+                notice.innerHTML = '<i data-lucide="check-circle" class="w-3 h-3"></i> Parameters applied to DCF calculator';
+                msgDiv.appendChild(notice);
+            }
+
+            container.appendChild(msgDiv);
+            container.scrollTop = container.scrollHeight;
+            lucide.createIcons();
+        }
+
+        function applyDCFParameters(params) {
+            if (!params) return;
+
+            if (params.growthRate !== undefined) {
+                const el = document.getElementById('dcf-growth');
+                el.value = params.growthRate;
+                document.getElementById('dcf-growth-val').textContent = params.growthRate + '%';
+            }
+            if (params.discountRate !== undefined) {
+                const el = document.getElementById('dcf-discount');
+                el.value = params.discountRate;
+                document.getElementById('dcf-discount-val').textContent = params.discountRate + '%';
+            }
+            if (params.terminalGrowth !== undefined) {
+                const el = document.getElementById('dcf-terminal');
+                el.value = params.terminalGrowth;
+                document.getElementById('dcf-terminal-val').textContent = params.terminalGrowth + '%';
+            }
+            if (params.years !== undefined) {
+                const el = document.getElementById('dcf-years');
+                el.value = params.years;
+                document.getElementById('dcf-years-val').textContent = params.years + ' yrs';
+            }
+
+            // Recalculate DCF
+            calculateDCF();
+        }
+
+        async function sendDCFAIMessage() {
+            const input = document.getElementById('dcf-ai-input');
+            const message = input.value.trim();
+            if (!message) return;
+
+            const ticker = document.getElementById('ticker').value.trim().toUpperCase() ||
+                document.getElementById('company-ticker')?.textContent;
+
+            if (!ticker) {
+                addDCFAIMessage("Please load a stock first, then ask me about it!", false);
+                return;
+            }
+
+            // Add user message
+            addDCFAIMessage(message, true);
+            input.value = '';
+
+            // Show typing indicator
+            addDCFAIMessage("🤔 Analyzing DCF parameters...", false);
+
+            try {
+                // Get current DCF values for context
+                const currentDCF = {
+                    growthRate: parseFloat(document.getElementById('dcf-growth').value),
+                    discountRate: parseFloat(document.getElementById('dcf-discount').value),
+                    terminalGrowth: parseFloat(document.getElementById('dcf-terminal').value),
+                    years: parseInt(document.getElementById('dcf-years').value),
+                    fcf: document.getElementById('dcf-fcf-label').textContent,
+                    intrinsic: document.getElementById('dcf-intrinsic').textContent,
+                    currentPrice: document.getElementById('dcf-current').textContent
+                };
+
+                const res = await fetch('/api/ai-chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        ticker,
+                        message: `[DCF Analysis Request] ${message}. Current DCF settings: Growth=${currentDCF.growthRate}%, Discount=${currentDCF.discountRate}%, Terminal=${currentDCF.terminalGrowth}%, Years=${currentDCF.years}. FCF=${currentDCF.fcf}. Calculated Intrinsic Value=${currentDCF.intrinsic}. Current Price=${currentDCF.currentPrice}. Please suggest appropriate DCF parameters (growthRate, discountRate, terminalGrowth, years) based on the company's fundamentals. Return JSON with dcf_params object if suggesting parameters.`,
+                        mode: 'dcf'
+                    })
+                });
+
+                // Remove typing indicator
+                const messages = document.getElementById('dcf-ai-messages');
+                if (messages.lastChild && messages.lastChild.innerText.includes('Analyzing')) {
+                    messages.removeChild(messages.lastChild);
+                }
+
+                if (!res.ok) {
+                    addDCFAIMessage(`❌ Server error: ${res.status}`, false);
+                    return;
+                }
+
+                const data = await res.json();
+                if (data.error) {
+                    addDCFAIMessage(`❌ ${data.error}`, false);
+                    return;
+                }
+
+                // Try to extract DCF parameters from response
+                let dcfParams = null;
+                try {
+                    // Look for dcf_params in the response
+                    if (data.dcf_params) {
+                        dcfParams = data.dcf_params;
+                    } else if (data.response) {
+                        // Try to parse JSON from response
+                        const jsonMatch = data.response.match(/\{[\s\S]*"growthRate"[\s\S]*\}/);
+                        if (jsonMatch) {
+                            dcfParams = JSON.parse(jsonMatch[0]);
+                        }
+                    }
+                } catch (e) {
+                    // No params found, that's OK
+                }
+
+                addDCFAIMessage(data.response || data.message || "Analysis complete.", false, dcfParams);
+
+            } catch (e) {
+                const messages = document.getElementById('dcf-ai-messages');
+                if (messages.lastChild && messages.lastChild.innerText.includes('Analyzing')) {
+                    messages.removeChild(messages.lastChild);
+                }
+                addDCFAIMessage(`❌ Error: ${e.message}`, false);
             }
         }
 
