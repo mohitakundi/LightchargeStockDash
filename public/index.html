@@ -1021,6 +1021,59 @@
         </div>
     </div>
 
+    <!-- REQUEST STOCK MODAL -->
+    <div id="request-modal"
+        class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <!-- Modal Header -->
+            <div class="bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <i data-lucide="plus-circle" class="w-6 h-6 text-white"></i>
+                    <h2 class="text-xl font-bold text-white">Request New Stock</h2>
+                </div>
+                <button onclick="closeRequestModal()" class="text-white/80 hover:text-white transition">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Ticker Symbol</label>
+                    <input type="text" id="request-ticker-input"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-lg font-mono uppercase"
+                        placeholder="e.g., AAPL or RELIANCE" autocomplete="off">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Market</label>
+                    <select id="request-market-select"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-lg">
+                        <option value="US">🇺🇸 US (NYSE, NASDAQ)</option>
+                        <option value="IN">🇮🇳 India (NSE, BSE)</option>
+                    </select>
+                </div>
+                <p class="text-xs text-gray-500">
+                    For Indian stocks, we'll add the .NS suffix automatically.
+                    For US stocks, we'll validate before fetching from our API.
+                </p>
+                <div id="request-status" class="hidden p-3 rounded-lg text-sm"></div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="border-t bg-gray-50 px-6 py-4 flex items-center justify-end gap-3">
+                <button onclick="closeRequestModal()"
+                    class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-300 transition">
+                    Cancel
+                </button>
+                <button onclick="submitRequestStock()" id="submit-request-btn"
+                    class="bg-green-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-green-700 transition flex items-center gap-2">
+                    <i data-lucide="send" class="w-4 h-4"></i>
+                    Submit Request
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // --- GLOBAL STATE ---
         let fullHistory = [];
@@ -1756,45 +1809,109 @@
         // --- FETCH LOGIC ---
         document.getElementById('fetch-data-btn').addEventListener('click', loadData);
 
-        // --- PUBLIC TICKER REQUEST ---
-        document.getElementById('request-ticker-btn').addEventListener('click', async () => {
-            let ticker = document.getElementById('ticker').value.trim().toUpperCase();
-            if (!ticker) return alert('Enter a ticker symbol first');
+        // --- REQUEST MODAL FUNCTIONS ---
+        function openRequestModal() {
+            document.getElementById('request-modal').classList.remove('hidden');
+            document.getElementById('request-ticker-input').value = '';
+            document.getElementById('request-status').classList.add('hidden');
+            lucide.createIcons();
+        }
 
-            // Apply market-specific ticker formatting
-            if (currentMarket === 'IN') {
-                if (!ticker.endsWith('.NS') && !ticker.endsWith('.BO')) {
-                    ticker += '.NS';
-                }
-            } else {
-                // Reject Indian tickers in US mode
-                if (ticker.endsWith('.NS') || ticker.endsWith('.BO')) {
-                    return alert('Switch to India market for Indian stocks');
-                }
+        function closeRequestModal() {
+            document.getElementById('request-modal').classList.add('hidden');
+        }
+
+        async function submitRequestStock() {
+            const tickerInput = document.getElementById('request-ticker-input');
+            const marketSelect = document.getElementById('request-market-select');
+            const statusDiv = document.getElementById('request-status');
+            const btn = document.getElementById('submit-request-btn');
+
+            let ticker = tickerInput.value.trim().toUpperCase();
+            const market = marketSelect.value;
+
+            if (!ticker) {
+                showRequestStatus('Please enter a ticker symbol', 'error');
+                return;
             }
 
-            const btn = document.getElementById('request-ticker-btn');
-            const originalHTML = btn.innerHTML;
+            // Format ticker based on market
+            if (market === 'IN') {
+                // Add .NS suffix for Indian stocks
+                ticker = ticker.replace(/\.(NS|BO)$/i, ''); // Remove existing suffix if any
+                ticker += '.NS';
+            }
+
+            // Loading state
             btn.disabled = true;
-            btn.innerHTML = '<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> Requesting...';
+            btn.innerHTML = '<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> Processing...';
             lucide.createIcons();
 
             try {
+                // For US stocks: validate first with yfinance
+                if (market === 'US') {
+                    showRequestStatus('Validating ticker...', 'info');
+
+                    const validateRes = await fetch(`/api/validate-ticker?ticker=${ticker}`);
+                    const validateData = await validateRes.json();
+
+                    if (!validateData.valid) {
+                        showRequestStatus(`Ticker "${ticker}" not found. Please check the symbol.`, 'error');
+                        return;
+                    }
+
+                    showRequestStatus(`Found: ${validateData.name}. Fetching data...`, 'success');
+                }
+
+                // Request the stock data
+                showRequestStatus('Fetching stock data (may take 10-15 seconds for US stocks)...', 'info');
+
                 const res = await fetch('/api/request-ticker', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ ticker })
                 });
                 const data = await res.json();
-                alert(data.message || data.error);
+
+                if (data.error) {
+                    showRequestStatus(data.error, 'error');
+                } else {
+                    showRequestStatus(`Successfully added ${ticker}! Reloading stock list...`, 'success');
+                    // Reload stock list and close modal after a moment
+                    await loadStockList();
+                    setTimeout(() => {
+                        closeRequestModal();
+                        // Load the new stock
+                        document.getElementById('ticker').value = ticker;
+                        loadData();
+                    }, 1500);
+                }
             } catch (e) {
-                alert('Request failed. Try again later.');
+                showRequestStatus('Request failed. Please try again.', 'error');
             } finally {
                 btn.disabled = false;
-                btn.innerHTML = originalHTML;
+                btn.innerHTML = '<i data-lucide="send" class="w-4 h-4"></i> Submit Request';
                 lucide.createIcons();
             }
-        });
+        }
+
+        function showRequestStatus(message, type) {
+            const statusDiv = document.getElementById('request-status');
+            statusDiv.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700', 'bg-blue-100', 'text-blue-700');
+
+            if (type === 'error') {
+                statusDiv.classList.add('bg-red-100', 'text-red-700');
+            } else if (type === 'success') {
+                statusDiv.classList.add('bg-green-100', 'text-green-700');
+            } else {
+                statusDiv.classList.add('bg-blue-100', 'text-blue-700');
+            }
+
+            statusDiv.textContent = message;
+        }
+
+        // --- PUBLIC TICKER REQUEST (opens modal) ---
+        document.getElementById('request-ticker-btn').addEventListener('click', openRequestModal);
 
         // --- PUBLIC TICKER REFRESH ---
         document.getElementById('refresh-ticker-btn').addEventListener('click', async () => {
