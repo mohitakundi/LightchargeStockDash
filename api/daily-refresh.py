@@ -81,10 +81,9 @@ class handler(BaseHTTPRequestHandler):
                     # Update last_updated timestamp
                     existing_data['last_updated'] = datetime.now().isoformat()
                     
-                    # Save to Supabase
+                    # Save to Supabase (only update the data column)
                     supabase.table('stock_data').update({
-                        'data': existing_data,
-                        'updated_at': datetime.now().isoformat()
+                        'data': existing_data
                     }).eq('ticker', ticker).execute()
                     
                     updated.append({
