@@ -1333,13 +1333,47 @@
                 ? 'user-message bg-indigo-100 rounded-lg p-3 text-sm ml-6'
                 : 'ai-message bg-white rounded-lg p-3 text-sm';
 
+            // For AI responses with projections, extract reasoning from JSON
+            let displayContent = content;
+            if (!isUser && projections && content.includes('"reasoning"')) {
+                try {
+                    // Try to extract just the reasoning part
+                    const jsonMatch = content.match(/\{[\s\S]*"reasoning"\s*:\s*"([^"]+)"[\s\S]*\}/);
+                    if (jsonMatch && jsonMatch[1]) {
+                        displayContent = jsonMatch[1];
+                    }
+                } catch (e) {
+                    // Fall back to original content
+                }
+            }
+
             // Apply markdown formatting for AI responses
-            const formattedContent = isUser ? content : formatMarkdown(content);
+            const formattedContent = isUser ? displayContent : formatMarkdown(displayContent);
             msgDiv.innerHTML = `<div class="text-gray-700 leading-relaxed">${formattedContent}</div>`;
 
-            // Auto-apply projections if they exist
+            // Add Suggested Projections card if projections exist
             if (projections && !isUser) {
+                const bull = projections.bull || {};
+                const base = projections.base || {};
+                const bear = projections.bear || {};
+
+                const projCard = document.createElement('div');
+                projCard.className = 'mt-3 bg-indigo-50 rounded-lg p-3 border border-indigo-100';
+                projCard.innerHTML = `
+                    <div class="font-bold text-indigo-700 text-xs mb-2 flex items-center gap-1">
+                        <i data-lucide="sparkles" class="w-3 h-3"></i> Suggested Projections:
+                    </div>
+                    <div class="space-y-1 text-xs">
+                        <div>Revenue: <span class="text-green-600 font-bold">${bull.revenueGrowth || 0}%</span> / <span class="text-amber-600 font-bold">${base.revenueGrowth || 0}%</span> / <span class="text-red-600 font-bold">${bear.revenueGrowth || 0}%</span></div>
+                        <div>PAT: <span class="text-green-600 font-bold">${bull.patGrowth || 0}%</span> / <span class="text-amber-600 font-bold">${base.patGrowth || 0}%</span> / <span class="text-red-600 font-bold">${bear.patGrowth || 0}%</span></div>
+                        <div>Target PE: <span class="text-green-600 font-bold">${bull.targetPE || 0}</span> / <span class="text-amber-600 font-bold">${base.targetPE || 0}</span> / <span class="text-red-600 font-bold">${bear.targetPE || 0}</span></div>
+                    </div>
+                `;
+                msgDiv.appendChild(projCard);
+
+                // Auto-apply projections
                 applyAIProjections(projections);
+
                 // Show notification that projections were applied
                 const notice = document.createElement('div');
                 notice.className = 'mt-2 text-xs text-green-600 font-medium flex items-center gap-1';
