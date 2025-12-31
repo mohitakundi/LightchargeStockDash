@@ -9,6 +9,9 @@
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- D3.js for Sankey chart -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/d3-sankey@0.12.3/dist/d3-sankey.min.js"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -904,6 +907,22 @@
                         class="text-sm font-bold text-indigo-600 hover:text-indigo-800 flex items-center justify-center gap-1 w-full transition-colors">
                         <i data-lucide="chevron-down" class="w-4 h-4"></i> Show Full History
                     </button>
+                </div>
+            </div>
+
+            <!-- 10. Income Statement Sankey Chart -->
+            <div class="card mt-4">
+                <div class="p-4 border-b bg-gray-50 flex items-center justify-between">
+                    <h3 class="font-bold text-gray-700 flex items-center gap-2">
+                        <i data-lucide="git-branch" class="w-5 h-5 text-indigo-600"></i>
+                        Income Statement Flow
+                    </h3>
+                    <span class="text-xs text-gray-500">Most Recent Fiscal Year</span>
+                </div>
+                <div id="sankey-chart" class="p-4" style="min-height: 350px; position: relative;">
+                    <div class="flex items-center justify-center h-full text-gray-400 text-sm">
+                        Loading chart...
+                    </div>
                 </div>
             </div>
 
@@ -2112,6 +2131,7 @@
                 // Reset expanded state on new load
                 isFinancialsExpanded = false;
                 renderFinancialTable(data.income.annualReports);
+                renderSankeyChart(data.income.annualReports);
 
                 lucide.createIcons();
             } catch (e) { errEl.textContent = e.message; }
@@ -3153,6 +3173,147 @@
         // VALUATION GAUGE AND FAIR VALUE BAR
         // =============================================
 
+        // --- SANKEY CHART FOR INCOME STATEMENT ---
+        function renderSankeyChart(incomeReports) {
+            const container = document.getElementById('sankey-chart');
+            if (!container) return;
+
+            // Get most recent report
+            const report = incomeReports && incomeReports[0];
+            if (!report) {
+                container.innerHTML = '<div class="flex items-center justify-center h-full text-gray-400 text-sm">No income data available</div>';
+                return;
+            }
+
+            // Parse values (handle null/undefined)
+            const parse = (v) => Math.abs(parseFloat(v)) || 0;
+
+            const revenue = parse(report.totalRevenue);
+            const costOfRevenue = parse(report.costOfRevenue);
+            const grossProfit = parse(report.grossProfit);
+            const opExpenses = parse(report.operatingExpenses) || (grossProfit - parse(report.operatingIncome));
+            const opIncome = parse(report.operatingIncome);
+            const netIncome = parse(report.netIncome);
+            const taxInterest = Math.max(0, opIncome - netIncome);
+
+            if (revenue === 0) {
+                container.innerHTML = '<div class="flex items-center justify-center h-full text-gray-400 text-sm">Insufficient data for chart</div>';
+                return;
+            }
+
+            // Clear container
+            container.innerHTML = '';
+
+            // Set up dimensions
+            const width = container.clientWidth;
+            const height = 320;
+            const margin = { top: 20, right: 150, bottom: 20, left: 20 };
+
+            // Create SVG
+            const svg = d3.select(container)
+                .append('svg')
+                .attr('width', width)
+                .attr('height', height);
+
+            // Define nodes
+            const nodes = [
+                { name: 'Revenue' },
+                { name: 'Cost of Revenue' },
+                { name: 'Gross Profit' },
+                { name: 'Operating Expenses' },
+                { name: 'Operating Income' },
+                { name: 'Tax & Interest' },
+                { name: 'Net Income' }
+            ];
+
+            // Define links (source, target, value)
+            const links = [
+                { source: 0, target: 1, value: costOfRevenue },      // Revenue -> Cost
+                { source: 0, target: 2, value: grossProfit },        // Revenue -> Gross Profit
+                { source: 2, target: 3, value: opExpenses },         // Gross -> OpEx
+                { source: 2, target: 4, value: opIncome },           // Gross -> Op Income
+                { source: 4, target: 5, value: taxInterest },        // Op Income -> Tax
+                { source: 4, target: 6, value: netIncome }           // Op Income -> Net Income
+            ].filter(l => l.value > 0);  // Only show non-zero flows
+
+            // Create Sankey generator
+            const sankey = d3.sankey()
+                .nodeWidth(20)
+                .nodePadding(15)
+                .extent([[margin.left, margin.top], [width - margin.right, height - margin.bottom]]);
+
+            // Generate layout
+            const { nodes: sankeyNodes, links: sankeyLinks } = sankey({
+                nodes: nodes.map(d => Object.assign({}, d)),
+                links: links.map(d => Object.assign({}, d))
+            });
+
+            // Color scale
+            const colorScale = (name) => {
+                if (name === 'Revenue') return '#6366f1';  // Indigo
+                if (name === 'Gross Profit') return '#8b5cf6';  // Purple
+                if (name === 'Operating Income') return '#a855f7';  // Purple lighter
+                if (name === 'Net Income') return '#22c55e';  // Green
+                return '#ef4444';  // Red for expenses
+            };
+
+            // Format currency for tooltips
+            const fmtCurrency = (v) => {
+                if (v >= 1e12) return '₹' + (v / 1e12).toFixed(2) + 'T';
+                if (v >= 1e9) return '₹' + (v / 1e9).toFixed(2) + 'B';
+                if (v >= 1e6) return '₹' + (v / 1e6).toFixed(2) + 'M';
+                return '₹' + v.toLocaleString();
+            };
+
+            // Draw links
+            svg.append('g')
+                .selectAll('path')
+                .data(sankeyLinks)
+                .join('path')
+                .attr('d', d3.sankeyLinkHorizontal())
+                .attr('fill', 'none')
+                .attr('stroke', d => colorScale(d.source.name))
+                .attr('stroke-opacity', 0.4)
+                .attr('stroke-width', d => Math.max(1, d.width))
+                .on('mouseover', function (event, d) {
+                    d3.select(this).attr('stroke-opacity', 0.7);
+                })
+                .on('mouseout', function (event, d) {
+                    d3.select(this).attr('stroke-opacity', 0.4);
+                })
+                .append('title')
+                .text(d => `${d.source.name} → ${d.target.name}\n${fmtCurrency(d.value)}`);
+
+            // Draw nodes
+            svg.append('g')
+                .selectAll('rect')
+                .data(sankeyNodes)
+                .join('rect')
+                .attr('x', d => d.x0)
+                .attr('y', d => d.y0)
+                .attr('width', d => d.x1 - d.x0)
+                .attr('height', d => d.y1 - d.y0)
+                .attr('fill', d => colorScale(d.name))
+                .attr('rx', 3)
+                .append('title')
+                .text(d => `${d.name}\n${fmtCurrency(d.value)}`);
+
+            // Draw labels
+            svg.append('g')
+                .style('font-size', '11px')
+                .style('font-weight', '500')
+                .selectAll('text')
+                .data(sankeyNodes)
+                .join('text')
+                .attr('x', d => d.x0 < width / 2 ? d.x1 + 8 : d.x0 - 8)
+                .attr('y', d => (d.y0 + d.y1) / 2)
+                .attr('dy', '0.35em')
+                .attr('text-anchor', d => d.x0 < width / 2 ? 'start' : 'end')
+                .text(d => `${d.name}: ${fmtCurrency(d.value)}`)
+                .attr('fill', '#374151');
+        }
+
+        // --- VALUATION GAUGE (PE) ---
         let valuationGaugeInstance = null;
 
         function renderValuationGauge(data) {
