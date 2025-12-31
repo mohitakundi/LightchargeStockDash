@@ -6,5 +6,11 @@
             "source": "/admin",
             "destination": "/admin.html"
         }
+    ],
+    "crons": [
+        {
+            "path": "/api/daily-refresh",
+            "schedule": "30 3 * * 1-5"
+        }
     ]
 }
