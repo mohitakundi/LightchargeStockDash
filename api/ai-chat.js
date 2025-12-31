@@ -77,7 +77,7 @@ ${stockContext}
 
 USER QUESTION: ${question}`;
 
-        const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+        const model = genAI.getGenerativeModel({ model: 'gemma-3-27b-it' });
 
         // Build chat history
         const chatHistory = history.map(msg => ({
