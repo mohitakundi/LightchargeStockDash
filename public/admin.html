@@ -115,7 +115,7 @@
             </form>
 
             <!-- Bulk Actions -->
-            <div class="flex gap-2 mb-4 border-b pb-4">
+            <div class="flex gap-2 mb-4 border-b pb-4 flex-wrap">
                 <button onclick="refreshSelected()"
                     class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm font-bold flex items-center gap-2">
                     <i data-lucide="refresh-cw" class="w-4 h-4"></i> Refresh Selected
@@ -123,6 +123,10 @@
                 <button onclick="refreshAll()"
                     class="bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-900 text-sm font-bold flex items-center gap-2">
                     <i data-lucide="layers" class="w-4 h-4"></i> Refresh All
+                </button>
+                <button onclick="selectOutdated()"
+                    class="bg-amber-600 text-white px-4 py-2 rounded hover:bg-amber-700 text-sm font-bold flex items-center gap-2">
+                    <i data-lucide="clock" class="w-4 h-4"></i> Select Outdated
                 </button>
             </div>
 
@@ -368,6 +372,29 @@
             document.querySelectorAll('.ticker-check').forEach(cb => cb.checked = master.checked);
         }
 
+        function selectOutdated() {
+            const today = new Date().toISOString().split('T')[0];
+            let outdatedCount = 0;
+
+            // Uncheck all first
+            document.querySelectorAll('.ticker-check').forEach(cb => cb.checked = false);
+            document.getElementById('select-all').checked = false;
+
+            // Check only outdated ones
+            allTickers.forEach(t => {
+                const isToday = t.last_updated.startsWith(today);
+                if (!isToday) {
+                    const checkbox = document.querySelector(`.ticker-check[value="${t.symbol}"]`);
+                    if (checkbox) {
+                        checkbox.checked = true;
+                        outdatedCount++;
+                    }
+                }
+            });
+
+            alert(`Selected ${outdatedCount} outdated stock(s) of ${allTickers.length} total.`);
+        }
+
         loadTickers();
         updateStatus();
         // --- EXCHANGE RATE MANAGEMENT ---
@@ -379,9 +406,9 @@
                     body: JSON.stringify({ mode: 'status' })
                 });
                 const data = await res.json();
-                
+
                 document.getElementById('total-rates').textContent = data.totalRates || 0;
-                
+
                 if (data.oldestDate && data.newestDate) {
                     document.getElementById('rate-range').textContent = `${data.oldestDate} to ${data.newestDate}`;
                 } else {
@@ -397,7 +424,7 @@
             const originalText = btn.innerHTML;
             btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Processing...';
             btn.disabled = true;
-            
+
             try {
                 const res = await fetch('/api/exchange-history', {
                     method: 'POST',
@@ -405,10 +432,10 @@
                     body: JSON.stringify({ mode: 'yearly' })
                 });
                 const data = await res.json();
-                
+
                 const resultEl = document.getElementById('exchange-result');
                 resultEl.classList.remove('hidden', 'text-red-500', 'text-green-600');
-                
+
                 if (res.ok) {
                     resultEl.classList.add('text-green-600');
                     resultEl.innerHTML = `✅ ${data.message} (Success: ${data.success}, Failed: ${data.failed}, Skipped: ${data.skipped})`;
@@ -420,7 +447,7 @@
             } catch (e) {
                 document.getElementById('exchange-result').textContent = `❌ Network Error: ${e.message}`;
             }
-            
+
             btn.innerHTML = originalText;
             btn.disabled = false;
         }
@@ -428,17 +455,17 @@
         async function backfillMonthly() {
             const yearSelect = document.getElementById('monthly-year');
             const year = yearSelect.value;
-            
+
             if (!year) {
                 alert('Please select a year first');
                 return;
             }
-            
+
             const btn = event.currentTarget;
             const originalText = btn.innerHTML;
             btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Processing...';
             btn.disabled = true;
-            
+
             try {
                 const res = await fetch('/api/exchange-history', {
                     method: 'POST',
@@ -446,10 +473,10 @@
                     body: JSON.stringify({ mode: 'monthly', year: parseInt(year) })
                 });
                 const data = await res.json();
-                
+
                 const resultEl = document.getElementById('exchange-result');
                 resultEl.classList.remove('hidden', 'text-red-500', 'text-green-600');
-                
+
                 if (res.ok) {
                     resultEl.classList.add('text-green-600');
                     resultEl.innerHTML = `✅ ${data.message} (Success: ${data.success}, Failed: ${data.failed}, Skipped: ${data.skipped})`;
@@ -461,7 +488,7 @@
             } catch (e) {
                 document.getElementById('exchange-result').textContent = `❌ Network Error: ${e.message}`;
             }
-            
+
             btn.innerHTML = originalText;
             btn.disabled = false;
         }
