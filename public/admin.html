@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lightcharge Stock Dash - Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100 text-gray-800 p-4 md:p-8">
+
+    <!-- Admin Login Modal -->
+    <div id="login-modal" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+            <div class="text-center mb-6">
+                <i data-lucide="lock" class="w-12 h-12 mx-auto text-indigo-600 mb-4"></i>
+                <h2 class="text-2xl font-bold text-gray-900">Admin Login</h2>
+                <p class="text-gray-500 text-sm mt-2">Enter admin password to continue</p>
+            </div>
+            <form id="login-form" class="space-y-4">
+                <input type="password" id="admin-password"
+                    class="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="Admin Password" required>
+                <p id="login-error" class="text-red-500 text-sm hidden">Incorrect password</p>
+                <button type="submit"
+                    class="w-full bg-indigo-600 text-white py-3 rounded-lg font-bold hover:bg-indigo-700 transition">
+                    Login
+                </button>
+            </form>
+            <p class="text-center text-gray-400 text-xs mt-4">
+                <a href="/" class="hover:text-indigo-600">← Back to Dashboard</a>
+            </p>
+        </div>
+    </div>
+
+    <div class="max-w-4xl mx-auto">
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-900 flex items-center gap-2">
+                <i data-lucide="database" class="w-8 h-8 text-indigo-600"></i> Data Manager
+            </h1>
+            <a href="/" class="text-indigo-600 font-semibold hover:underline flex items-center gap-1">
+                <i data-lucide="calculator" class="w-4 h-4"></i> Go to Calculator
+            </a>
+        </div>
+
+        <!-- Status Bar -->
+        <div class="bg-white p-4 rounded-lg shadow mb-6 flex items-center justify-between border-l-4 border-indigo-500">
+            <div>
+                <p class="text-sm text-gray-500 font-medium uppercase">Worker Status</p>
+                <p id="worker-status" class="font-bold text-lg text-gray-800">Idle</p>
+            </div>
+            <div class="text-right">
+                <p class="text-sm text-gray-500 font-medium uppercase">Queue</p>
+                <p id="queue-count" class="font-bold text-lg text-indigo-600">0</p>
+            </div>
+        </div>
+
+        <!-- Refresh Options -->
+        <div class="bg-indigo-50 border border-indigo-100 p-4 rounded-lg mb-6">
+            <h3 class="text-sm font-bold text-indigo-800 uppercase mb-2">Refresh Strategy</h3>
+            <div class="flex gap-6">
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" name="refreshType" value="smart" checked
+                        class="w-4 h-4 text-indigo-600 focus:ring-indigo-500">
+                    <div>
+                        <span class="block font-bold text-gray-800">Smart Refresh</span>
+                        <span class="block text-xs text-gray-500">Updates price only if data is old. Skips if
+                            up-to-date. (1 API Call)</span>
+                    </div>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" name="refreshType" value="full"
+                        class="w-4 h-4 text-indigo-600 focus:ring-indigo-500">
+                    <div>
+                        <span class="block font-bold text-gray-800">Full Refresh</span>
+                        <span class="block text-xs text-gray-500">Re-downloads all Financials & History. (4 API
+                            Calls)</span>
+                    </div>
+                </label>
+            </div>
+        </div>
+
+        <!-- Add Ticker -->
+        <div class="bg-white p-6 rounded-lg shadow mb-6">
+            <h2 class="text-xl font-bold mb-4">Manage Tickers</h2>
+
+            <!-- Market Tabs -->
+            <div class="flex gap-2 mb-4">
+                <button id="tab-us" onclick="switchMarket('US')"
+                    class="market-tab active px-4 py-2 rounded-lg font-bold text-sm transition flex items-center gap-2">
+                    🇺🇸 US Stocks
+                </button>
+                <button id="tab-in" onclick="switchMarket('IN')"
+                    class="market-tab px-4 py-2 rounded-lg font-bold text-sm transition flex items-center gap-2">
+                    🇮🇳 Indian Stocks
+                </button>
+            </div>
+
+            <form id="add-ticker-form" class="flex gap-2 mb-4">
+                <input type="text" id="new-ticker"
+                    class="flex-1 p-2 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="Enter Ticker (e.g. MSFT)" required>
+                <button type="submit"
+                    class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 font-bold flex items-center gap-2">
+                    <i data-lucide="plus" class="w-4 h-4"></i> Add
+                </button>
+            </form>
+
+            <!-- Bulk Actions -->
+            <div class="flex gap-2 mb-4 border-b pb-4">
+                <button onclick="refreshSelected()"
+                    class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm font-bold flex items-center gap-2">
+                    <i data-lucide="refresh-cw" class="w-4 h-4"></i> Refresh Selected
+                </button>
+                <button onclick="refreshAll()"
+                    class="bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-900 text-sm font-bold flex items-center gap-2">
+                    <i data-lucide="layers" class="w-4 h-4"></i> Refresh All
+                </button>
+            </div>
+
+            <!-- Table -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-gray-50 text-gray-600 text-xs uppercase">
+                            <th class="p-3 border-b w-10"><input type="checkbox" id="select-all"
+                                    onclick="toggleSelectAll()"></th>
+                            <th class="p-3 border-b">Ticker</th>
+                            <th class="p-3 border-b">Last Updated</th>
+                            <th class="p-3 border-b text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ticker-table-body">
+                        <!-- Rows injected via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .market-tab {
+            background: #f3f4f6;
+            color: #6b7280;
+        }
+
+        .market-tab:hover {
+            background: #e5e7eb;
+        }
+
+        .market-tab.active {
+            background: #4f46e5;
+            color: white;
+        }
+    </style>
+
+    <script>
+        lucide.createIcons();
+        let allTickers = [];
+        let currentMarket = 'US';  // Default to US
+        let adminPassword = sessionStorage.getItem('adminPassword') || '';
+
+        // Check if already logged in
+        if (adminPassword) {
+            document.getElementById('login-modal').classList.add('hidden');
+        }
+
+        // Login form handler
+        document.getElementById('login-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            adminPassword = document.getElementById('admin-password').value;
+            sessionStorage.setItem('adminPassword', adminPassword);
+            document.getElementById('login-modal').classList.add('hidden');
+            loadTickers();
+        });
+
+        // Get auth headers
+        function getAuthHeaders() {
+            return {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${adminPassword}`
+            };
+        }
+
+        function switchMarket(market) {
+            currentMarket = market;
+            // Update tab styles
+            document.querySelectorAll('.market-tab').forEach(tab => tab.classList.remove('active'));
+            document.getElementById(`tab-${market.toLowerCase()}`).classList.add('active');
+            // Update placeholder
+            const input = document.getElementById('new-ticker');
+            input.placeholder = market === 'IN' ? 'Enter Ticker (e.g. RELIANCE)' : 'Enter Ticker (e.g. MSFT)';
+            // Reload tickers
+            loadTickers();
+        }
+
+        async function loadTickers() {
+            const res = await fetch(`/api/tickers?market=${currentMarket}`);
+            const data = await res.json();
+            allTickers = data.tickers;
+            renderTable();
+        }
+
+        function renderTable() {
+            // FIX: Capture currently checked items
+            const checkedItems = Array.from(document.querySelectorAll('.ticker-check:checked')).map(cb => cb.value);
+
+            const tbody = document.getElementById('ticker-table-body');
+            const today = new Date().toISOString().split('T')[0];
+
+            tbody.innerHTML = allTickers.map(t => {
+                const isToday = t.last_updated.startsWith(today);
+                const dateClass = isToday ? 'text-green-600 font-bold' : (t.last_updated === 'Never' ? 'text-red-500' : 'text-gray-600');
+                // FIX: Re-apply 'checked' attribute if it was checked before
+                const isChecked = checkedItems.includes(t.symbol) ? 'checked' : '';
+
+                return `
+                <tr class="hover:bg-gray-50 transition">
+                    <td class="p-3 border-b"><input type="checkbox" class="ticker-check w-4 h-4 rounded text-indigo-600" value="${t.symbol}" ${isChecked}></td>
+                    <td class="p-3 border-b font-bold text-gray-900">${t.symbol}</td>
+                    <td class="p-3 border-b text-sm ${dateClass}">
+                        ${t.last_updated} ${isToday ? '<span class="text-xs bg-green-100 text-green-800 px-1.5 py-0.5 rounded ml-2">Today</span>' : ''}
+                    </td>
+                    <td class="p-3 border-b text-right">
+                        <button onclick="deleteTicker('${t.symbol}')" class="text-red-600 hover:text-red-800 p-1 hover:bg-red-50 rounded">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </td>
+                </tr>
+            `}).join('');
+            lucide.createIcons();
+        }
+
+        document.getElementById('add-ticker-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const ticker = document.getElementById('new-ticker').value;
+            await fetch('/api/tickers', {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ ticker, market: currentMarket })
+            });
+            document.getElementById('new-ticker').value = '';
+            loadTickers();
+        });
+
+        async function deleteTicker(ticker) {
+            if (!confirm(`Delete ${ticker}? This will remove local data.`)) return;
+            await fetch('/api/delete-ticker', {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ ticker, market: currentMarket })
+            });
+            loadTickers();
+        }
+
+        function getRefreshType() {
+            return document.querySelector('input[name="refreshType"]:checked').value;
+        }
+
+        async function refreshSelected() {
+            const checked = Array.from(document.querySelectorAll('.ticker-check:checked')).map(cb => cb.value);
+            if (checked.length === 0) return alert('No tickers selected');
+            await triggerRefresh(checked);
+        }
+
+        async function refreshAll() {
+            const all = allTickers.map(t => t.symbol);
+            if (all.length === 0) return;
+
+            const type = getRefreshType();
+            const msg = type === 'smart'
+                ? `Queue SMART refresh for ${all.length} tickers?\nThis will check dates and only fetch price if needed.`
+                : `Queue FULL refresh for ${all.length} tickers?\nWARNING: This will take approx ${Math.ceil(all.length * 45 / 60)} minutes.`;
+
+            if (confirm(msg)) {
+                await triggerRefresh(all);
+            }
+        }
+
+        async function triggerRefresh(tickers) {
+            const type = getRefreshType();
+            const res = await fetch('/api/admin-refresh', {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ tickers, type })
+            });
+            const data = await res.json();
+            if (res.status === 401) {
+                alert('Unauthorized. Please login again.');
+                sessionStorage.removeItem('adminPassword');
+                location.reload();
+                return;
+            }
+            if (data.results) {
+                const success = data.results.filter(r => r.status === 'success').length;
+                const skipped = data.results.filter(r => r.status === 'skipped').length;
+                const errors = data.results.filter(r => r.status === 'error').length;
+                alert(`Refresh complete!\n✓ Success: ${success}\n↷ Skipped: ${skipped}\n✗ Errors: ${errors}`);
+            }
+            loadTickers();
+        }
+
+        async function updateStatus() {
+            const res = await fetch('/api/status');
+            const data = await res.json();
+            document.getElementById('worker-status').textContent = data.status;
+            document.getElementById('queue-count').textContent = data.queue_length;
+
+            if (data.status !== "Idle" || data.queue_length > 0) {
+                setTimeout(updateStatus, 2000);
+            } else {
+                loadTickers(); // Refresh table to show new dates
+                setTimeout(updateStatus, 5000);
+            }
+        }
+
+        function toggleSelectAll() {
+            const master = document.getElementById('select-all');
+            document.querySelectorAll('.ticker-check').forEach(cb => cb.checked = master.checked);
+        }
+
+        loadTickers();
+        updateStatus();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,3637 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lightcharge Stock Dash</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+
+        .input-group {
+            margin-bottom: 1rem;
+        }
+
+        .input-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: #6b7280;
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+            background-color: #fff;
+            font-size: 0.875rem;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: #4f46e5;
+            ring: 2px;
+            ring-color: #e0e7ff;
+        }
+
+        .card {
+            background-color: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+            overflow: hidden;
+        }
+
+        .btn-range {
+            padding: 0.25rem 0.75rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border-radius: 9999px;
+            transition: all 0.2s;
+        }
+
+        .btn-range.active {
+            background-color: #4f46e5;
+            color: white;
+        }
+
+        .btn-range:not(.active) {
+            background-color: #f3f4f6;
+            color: #4b5563;
+        }
+
+        .btn-range:hover:not(.active) {
+            background-color: #e5e7eb;
+        }
+
+        .cursor-crosshair {
+            cursor: crosshair !important;
+        }
+
+        .mini-chart {
+            min-height: 80px;
+        }
+
+        /* Toggle Switch */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #4f46e5;
+        }
+
+        .toggle-checkbox:checked+.toggle-label {
+            background-color: #4f46e5;
+        }
+
+        .toggle-checkbox:checked+.toggle-label:before {
+            transform: translateX(100%);
+        }
+
+        /* Currency Toggle Buttons */
+        .currency-btn {
+            color: #6b7280;
+            background: transparent;
+        }
+
+        .currency-btn:hover {
+            background: #e5e7eb;
+        }
+
+        .currency-btn.active {
+            background: #4f46e5;
+            color: white;
+        }
+
+        /* Measurement Status Toast */
+        .toast-measure {
+            position: absolute;
+            top: 1rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(31, 41, 55, 0.9);
+            color: white;
+            padding: 6px 16px;
+            border-radius: 99px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            z-index: 50;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .toast-measure.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+
+<body class="text-gray-800">
+
+    <nav class="bg-white border-b sticky top-0 z-30">
+        <div class="container mx-auto px-3 sm:px-4 h-14 sm:h-16 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <i data-lucide="trending-up" class="text-indigo-600 w-5 h-5 sm:w-6 sm:h-6"></i>
+                <h1 class="text-base sm:text-xl font-bold text-gray-900 tracking-tight">Lightcharge <span
+                        class="text-indigo-600">Stock Dash</span></h1>
+            </div>
+            <div class="flex items-center gap-2 sm:gap-4">
+                <!-- Market Selector -->
+                <select id="market-selector"
+                    class="bg-gray-100 border border-gray-200 text-gray-800 text-xs sm:text-sm font-medium rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 focus:ring-2 focus:ring-indigo-500 focus:border-transparent cursor-pointer">
+                    <option value="GLOBAL" selected>🌐 Global</option>
+                    <option value="US">🇺🇸 US</option>
+                    <option value="IN">🇮🇳 India</option>
+                </select>
+                <!-- Currency Toggle (visible for India only) -->
+                <div id="currency-toggle" class="hidden flex items-center gap-1 bg-gray-100 rounded-lg p-0.5">
+                    <button id="btn-inr"
+                        class="currency-btn active text-xs sm:text-sm px-2 py-1 rounded-md font-medium transition">₹
+                        INR</button>
+                    <button id="btn-usd"
+                        class="currency-btn text-xs sm:text-sm px-2 py-1 rounded-md font-medium transition">$
+                        USD</button>
+                </div>
+                <!-- Donate Button -->
+                <a href="https://razorpay.me/@mohitakundi" target="_blank"
+                    class="bg-pink-500 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-medium hover:bg-pink-600 transition flex items-center gap-1 sm:gap-2 text-sm sm:text-base">
+                    <i data-lucide="heart" class="w-4 h-4"></i><span class="hidden sm:inline">Donate</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto p-4 md:p-6 space-y-6">
+
+        <!-- Search Bar -->
+        <div class="card p-4 flex flex-col md:flex-row gap-4 items-center justify-between overflow-visible">
+            <div class="flex-1 w-full flex flex-wrap gap-2">
+                <div class="relative flex-1 min-w-[150px]">
+                    <i data-lucide="search" class="absolute left-3 top-2.5 w-5 h-5 text-gray-400"></i>
+                    <input type="text" id="ticker"
+                        class="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder="Search by name or ticker..." autocomplete="off">
+                    <!-- Custom Search Dropdown -->
+                    <div id="search-dropdown"
+                        class="hidden absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                    </div>
+                </div>
+                <button id="fetch-data-btn"
+                    class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 transition">Load</button>
+                <button id="add-compare-btn"
+                    class="bg-purple-600 text-white px-3 py-2 rounded-lg font-medium hover:bg-purple-700 transition flex items-center gap-1"
+                    title="Add to comparison basket" onclick="addToCompare()">
+                    <i data-lucide="git-compare" class="w-4 h-4"></i><span class="hidden sm:inline">Compare</span>
+                </button>
+                <!-- Compare Basket Counter -->
+                <div id="compare-basket-container" class="hidden relative">
+                    <button id="view-comparison-btn" onclick="openComparisonModal()"
+                        class="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-3 py-2 rounded-lg font-medium hover:from-purple-700 hover:to-indigo-700 transition flex items-center gap-1">
+                        <i data-lucide="bar-chart-2" class="w-4 h-4"></i>
+                        <span>View (<span id="basket-count">0</span>)</span>
+                    </button>
+                </div>
+                <button id="request-ticker-btn"
+                    class="bg-green-600 text-white px-3 py-2 rounded-lg font-medium hover:bg-green-700 transition flex items-center gap-1"
+                    title="Request new ticker data">
+                    <i data-lucide="plus-circle" class="w-4 h-4"></i><span class="hidden sm:inline">Request</span>
+                </button>
+                <button id="refresh-ticker-btn"
+                    class="bg-amber-500 text-white px-3 py-2 rounded-lg font-medium hover:bg-amber-600 transition flex items-center gap-1"
+                    title="Refresh ticker price">
+                    <i data-lucide="refresh-cw" class="w-4 h-4"></i><span class="hidden sm:inline">Refresh</span>
+                </button>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <div id="data-updated-container" class="hidden text-right">
+                    <p class="text-[10px] text-gray-400 uppercase font-bold">Data Updated</p>
+                    <p id="data-updated-date" class="text-sm font-mono font-medium text-gray-700"></p>
+                </div>
+                <div id="api-error-message" class="text-red-500 text-sm font-medium"></div>
+            </div>
+        </div>
+
+        <!-- MAIN CONTENT -->
+        <div id="main-content" class="hidden space-y-6">
+
+            <!-- 1. Overview -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2 card p-6">
+                    <div
+                        class="flex flex-col sm:flex-row justify-between items-start sm:items-start gap-2 sm:gap-4 mb-4">
+                        <div class="flex-1">
+                            <h2 class="text-2xl sm:text-3xl font-bold text-gray-900">
+                                <a id="company-name-link" href="#" target="_blank"
+                                    class="hover:text-indigo-600 transition-colors"></a>
+                                <span id="country-flag" class="ml-2"></span>
+                            </h2>
+                            <div
+                                class="flex flex-wrap items-center gap-2 sm:gap-3 text-xs sm:text-sm text-gray-500 mt-1">
+                                <span id="company-ticker"
+                                    class="font-mono font-semibold bg-gray-100 px-2 py-0.5 rounded"></span>
+                                <span id="company-industry"></span>
+                                <span class="hidden sm:inline">•</span>
+                                <span id="company-exchange"></span>
+                                <span class="hidden sm:inline">•</span>
+                                <span id="asset-type" class="text-gray-400"></span>
+                            </div>
+                        </div>
+                        <div class="text-left sm:text-right flex sm:flex-col items-center sm:items-end gap-2 sm:gap-0">
+                            <div id="header-price" class="text-2xl sm:text-3xl font-bold text-gray-900"></div>
+                            <div id="header-change" class="text-xs sm:text-sm font-medium"></div>
+                        </div>
+                    </div>
+                    <p id="company-desc"
+                        class="text-gray-600 text-sm leading-relaxed mb-4 line-clamp-3 hover:line-clamp-none transition-all cursor-pointer"
+                        title="Click to expand"></p>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 border-t pt-4">
+                        <div>
+                            <p class="text-xs text-gray-500">Market Cap</p>
+                            <p id="stat-mcap" class="font-semibold">-</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-500">Revenue (TTM)</p>
+                            <p id="stat-rev" class="font-semibold">-</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-500">EPS (TTM)</p>
+                            <p id="stat-eps" class="font-semibold">-</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-500">Beta</p>
+                            <p id="stat-beta" class="font-semibold">-</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card p-6 flex flex-col justify-center">
+                    <h3 class="text-sm font-bold text-gray-900 uppercase mb-4 flex items-center gap-2">
+                        <i data-lucide="users" class="w-4 h-4"></i> Analyst Consensus
+                    </h3>
+                    <div id="analyst-chart" class="h-40"></div>
+                    <div class="flex justify-between text-xs text-gray-500 mt-2 border-t pt-2">
+                        <span>Target: <strong id="target-price" class="text-gray-900"></strong></span>
+                        <span id="analyst-verdict" class="font-bold text-indigo-600"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Snowflake Stock Health Section -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Snowflake Radar Chart -->
+                <div class="card p-6">
+                    <h3 class="text-sm font-bold text-gray-900 uppercase mb-4 flex items-center gap-2">
+                        <i data-lucide="snowflake" class="w-4 h-4"></i> Stock Health Snowflake
+                    </h3>
+                    <div id="snowflake-chart" class="h-64"></div>
+                    <div class="text-center text-xs text-gray-500 mt-2">
+                        Score: <strong id="snowflake-total" class="text-indigo-600">-/30</strong>
+                    </div>
+                </div>
+
+                <!-- Score Breakdown Cards -->
+                <div class="lg:col-span-2 grid grid-cols-2 lg:grid-cols-5 gap-4">
+                    <!-- Value Score -->
+                    <div class="card p-4 border-t-4 border-indigo-500 flex flex-col">
+                        <div class="text-center">
+                            <div class="text-xs text-gray-500 uppercase font-bold mb-1">Value</div>
+                            <div id="score-value" class="text-2xl font-bold text-indigo-600">-</div>
+                            <div class="text-xs text-gray-400">/6</div>
+                        </div>
+                        <div id="score-value-details" class="mt-3 pt-2 border-t text-left space-y-1 flex-1"></div>
+                    </div>
+                    <!-- Future Score -->
+                    <div class="card p-4 border-t-4 border-cyan-500 flex flex-col">
+                        <div class="text-center">
+                            <div class="text-xs text-gray-500 uppercase font-bold mb-1">Future</div>
+                            <div id="score-future" class="text-2xl font-bold text-cyan-600">-</div>
+                            <div class="text-xs text-gray-400">/6</div>
+                        </div>
+                        <div id="score-future-details" class="mt-3 pt-2 border-t text-left space-y-1 flex-1"></div>
+                    </div>
+                    <!-- Past Score -->
+                    <div class="card p-4 border-t-4 border-amber-500 flex flex-col">
+                        <div class="text-center">
+                            <div class="text-xs text-gray-500 uppercase font-bold mb-1">Past</div>
+                            <div id="score-past" class="text-2xl font-bold text-amber-600">-</div>
+                            <div class="text-xs text-gray-400">/6</div>
+                        </div>
+                        <div id="score-past-details" class="mt-3 pt-2 border-t text-left space-y-1 flex-1"></div>
+                    </div>
+                    <!-- Health Score -->
+                    <div class="card p-4 border-t-4 border-emerald-500 flex flex-col">
+                        <div class="text-center">
+                            <div class="text-xs text-gray-500 uppercase font-bold mb-1">Health</div>
+                            <div id="score-health" class="text-2xl font-bold text-emerald-600">-</div>
+                            <div class="text-xs text-gray-400">/6</div>
+                        </div>
+                        <div id="score-health-details" class="mt-3 pt-2 border-t text-left space-y-1 flex-1"></div>
+                    </div>
+                    <!-- Dividend Score -->
+                    <div class="card p-4 border-t-4 border-rose-500 flex flex-col">
+                        <div class="text-center">
+                            <div class="text-xs text-gray-500 uppercase font-bold mb-1">Dividend</div>
+                            <div id="score-dividend" class="text-2xl font-bold text-rose-600">-</div>
+                            <div class="text-xs text-gray-400">/6</div>
+                        </div>
+                        <div id="score-dividend-details" class="mt-3 pt-2 border-t text-left space-y-1 flex-1"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Valuation Analysis Section -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- PE Gauge -->
+                <div class="card p-6">
+                    <h3 class="text-sm font-bold text-gray-900 uppercase mb-4 flex items-center gap-2">
+                        <i data-lucide="gauge" class="w-4 h-4"></i> Valuation Gauge
+                    </h3>
+                    <div id="valuation-gauge" class="h-48"></div>
+                    <div class="text-center mt-2">
+                        <span class="text-xs text-gray-500">PE Ratio vs Fair PE</span>
+                    </div>
+                </div>
+
+                <!-- Fair Value Bar -->
+                <div class="card p-6">
+                    <h3 class="text-sm font-bold text-gray-900 uppercase mb-4 flex items-center gap-2">
+                        <i data-lucide="scale" class="w-4 h-4"></i> Fair Value Analysis
+                    </h3>
+                    <div class="space-y-4">
+                        <!-- Current Price vs Target -->
+                        <div>
+                            <div class="flex justify-between text-sm mb-2">
+                                <span class="text-gray-600">Current Price</span>
+                                <span id="fv-current-price" class="font-bold"></span>
+                            </div>
+                            <div class="flex justify-between text-sm mb-2">
+                                <span class="text-gray-600">Analyst Target</span>
+                                <span id="fv-target-price" class="font-bold text-indigo-600"></span>
+                            </div>
+                            <div class="relative h-8 bg-gray-200 rounded-full overflow-hidden">
+                                <div id="fv-bar-fill" class="absolute h-full rounded-full transition-all duration-500"
+                                    style="width: 0%"></div>
+                                <div id="fv-bar-marker" class="absolute top-0 h-full w-1 bg-gray-800" style="left: 50%">
+                                </div>
+                            </div>
+                            <div class="flex justify-between text-xs text-gray-500 mt-1">
+                                <span>Overvalued</span>
+                                <span>Fair Value</span>
+                                <span>Undervalued</span>
+                            </div>
+                        </div>
+                        <!-- Upside/Downside -->
+                        <div class="text-center p-4 rounded-lg bg-gray-50">
+                            <span class="text-xs text-gray-500">Potential Upside/Downside</span>
+                            <div id="fv-upside" class="text-2xl font-bold"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Chart -->
+            <div class="card p-1 relative">
+                <div class="p-4 border-b flex flex-wrap gap-4 justify-between items-center bg-gray-50 rounded-t-lg">
+                    <h3 class="font-bold text-gray-700">Price Action</h3>
+                    <div class="flex gap-2 items-center">
+                        <button id="measure-btn"
+                            class="flex items-center gap-1 text-xs font-bold bg-white border px-3 py-1 rounded hover:bg-gray-50 text-gray-600 transition">
+                            <i data-lucide="ruler" class="w-3 h-3"></i> Ruler
+                        </button>
+                        <div class="flex bg-gray-200 rounded-full p-1" id="time-ranges">
+                            <button class="btn-range" data-range="YTD">YTD</button>
+                            <button class="btn-range" data-range="1Y">1Y</button>
+                            <button class="btn-range" data-range="3Y">3Y</button>
+                            <button class="btn-range active" data-range="5Y">5Y</button>
+                            <button class="btn-range" data-range="MAX">MAX</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="relative w-full h-[400px]">
+                    <div id="measure-toast" class="toast-measure">Select Point 1</div>
+                    <div id="price-chart" class="w-full h-full"></div>
+                </div>
+
+                <!-- Measurement Overlay -->
+                <div id="measure-overlay"
+                    class="hidden absolute top-20 left-1/2 transform -translate-x-1/2 bg-white shadow-xl border border-gray-200 rounded-lg p-4 z-20 flex gap-6 animate-fade-in-up">
+                    <div>
+                        <p class="text-xs text-gray-500">Price Change</p>
+                        <p id="measure-price" class="font-bold text-lg"></p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500">Percentage</p>
+                        <p id="measure-percent" class="font-bold text-lg"></p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-500">Duration</p>
+                        <p id="measure-days" class="font-bold text-lg"></p>
+                    </div>
+                    <button onclick="resetMeasure()" class="text-gray-400 hover:text-red-500"><i data-lucide="x"
+                            class="w-4 h-4"></i></button>
+                </div>
+            </div>
+
+            <!-- 3. Fundamentals -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="card p-4">
+                    <h4 class="text-xs font-bold text-gray-500 uppercase mb-3 border-b pb-2">Valuation</h4>
+                    <div class="space-y-2">
+                        <div class="flex justify-between"><span class="text-sm text-gray-600">Trailing PE</span> <span
+                                id="val-pe" class="font-bold text-sm"></span></div>
+                        <div class="flex justify-between"><span class="text-sm text-gray-600">Forward PE</span> <span
+                                id="val-fpe" class="font-bold text-sm"></span></div>
+                        <div class="flex justify-between"><span class="text-sm text-gray-600">PEG Ratio</span> <span
+                                id="val-peg" class="font-bold text-sm"></span></div>
+                        <div class="flex justify-between"><span class="text-sm text-gray-600">Book Value</span> <span
+                                id="val-bv" class="font-bold text-sm"></span></div>
+                        <div class="flex justify-between"><span class="text-sm text-gray-600">Price/Book</span> <span
+                                id="val-pb" class="font-bold text-sm"></span></div>
+                        <div class="flex justify-between"><span class="text-sm text-gray-600">P/S Ratio</span> <span
+                                id="val-ps" class="font-bold text-sm"></span></div>
+                        <div class="flex justify-between"><span class="text-sm text-gray-600">EV/Revenue</span> <span
+                                id="val-ev-rev" class="font-bold text-sm"></span></div>
+                        <div class="flex justify-between"><span class="text-sm text-gray-600">EV/EBITDA</span> <span
+                                id="val-ev-ebitda" class="font-bold text-sm"></span></div>
+                        <div class="flex justify-between"><span class="text-sm text-gray-600">EBITDA</span> <span
+                                id="val-ebitda" class="font-bold text-sm"></span></div>
+                    </div>
+                </div>
+                <div class="card p-4">
+                    <h4 class="text-xs font-bold text-gray-500 uppercase mb-3 border-b pb-2">Profitability</h4>
+                    <div class="space-y-2">
+                        <div class="flex justify-between"><span class="text-sm text-gray-600">Profit Margin</span> <span
+                                id="prof-margin" class="font-bold text-sm"></span></div>
+                        <div class="flex justify-between"><span class="text-sm text-gray-600">Op. Margin</span> <span
+                                id="prof-op-margin" class="font-bold text-sm"></span></div>
+                        <div class="flex justify-between"><span class="text-sm text-gray-600">Gross Profit</span> <span
+                                id="prof-gross" class="font-bold text-sm"></span></div>
+                        <div class="flex justify-between"><span class="text-sm text-gray-600">ROE (TTM)</span> <span
+                                id="prof-roe" class="font-bold text-sm"></span></div>
+                        <div class="flex justify-between"><span class="text-sm text-gray-600">ROA (TTM)</span> <span
+                                id="prof-roa" class="font-bold text-sm"></span></div>
+                        <div class="flex justify-between"><span class="text-sm text-gray-600">Rev/Share</span> <span
+                                id="prof-rev-share" class="font-bold text-sm"></span></div>
+                        <div class="flex justify-between"><span class="text-sm text-gray-600">Diluted EPS</span> <span
+                                id="prof-diluted-eps" class="font-bold text-sm"></span></div>
+                        <div class="flex justify-between"><span class="text-sm text-gray-600">Rev Growth (YOY)</span>
+                            <span id="prof-rev-growth" class="font-bold text-sm"></span>
+                        </div>
+                        <div class="flex justify-between"><span class="text-sm text-gray-600">EPS Growth (YOY)</span>
+                            <span id="prof-eps-growth" class="font-bold text-sm"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="card p-4">
+                    <h4 class="text-xs font-bold text-gray-500 uppercase mb-3 border-b pb-2">Dividends & Technicals</h4>
+                    <div class="space-y-3">
+                        <div class="flex justify-between"><span class="text-sm text-gray-600">Div Yield</span> <span
+                                id="div-yield" class="font-bold text-sm"></span></div>
+                        <div class="flex justify-between"><span class="text-sm text-gray-600">Ex-Div Date</span> <span
+                                id="div-date" class="font-bold text-sm text-xs"></span></div>
+                        <div class="pt-2">
+                            <div class="flex justify-between text-xs text-gray-500 mb-1"><span>52W Low</span><span>52W
+                                    High</span></div>
+                            <div class="h-2 bg-gray-200 rounded-full overflow-hidden relative">
+                                <div id="range-bar-52" class="absolute h-full bg-indigo-500 w-2 rounded-full"
+                                    style="left: 0%"></div>
+                            </div>
+                            <div class="flex justify-between text-xs font-mono mt-1"><span id="low-52"></span><span
+                                    id="high-52"></span></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card p-4">
+                    <h4 class="text-xs font-bold text-gray-500 uppercase mb-3 border-b pb-2">Trend (Moving Avgs)</h4>
+                    <div class="space-y-4 pt-2">
+                        <div>
+                            <div class="flex justify-between text-xs mb-1"><span class="text-gray-600">50-Day
+                                    MA</span><span id="ma-50-val" class="font-bold"></span></div>
+                            <div class="w-full bg-gray-200 rounded-full h-1.5">
+                                <div id="ma-50-bar" class="bg-blue-500 h-1.5 rounded-full" style="width: 0%"></div>
+                            </div>
+                            <p id="ma-50-text" class="text-[10px] text-gray-500 mt-1 text-right"></p>
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-xs mb-1"><span class="text-gray-600">200-Day
+                                    MA</span><span id="ma-200-val" class="font-bold"></span></div>
+                            <div class="w-full bg-gray-200 rounded-full h-1.5">
+                                <div id="ma-200-bar" class="bg-purple-500 h-1.5 rounded-full" style="width: 0%"></div>
+                            </div>
+                            <p id="ma-200-text" class="text-[10px] text-gray-500 mt-1 text-right"></p>
+                        </div>
+                    </div>
+                </div>
+                <!-- VOLATILITY ANALYSIS (NEW) -->
+                <div class="card p-4">
+                    <h4 class="text-xs font-bold text-gray-500 uppercase mb-3 border-b pb-2">Volatility Analysis</h4>
+                    <div class="space-y-4 pt-1">
+                        <!-- Beta Gauge -->
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-gray-600">Beta (Risk)</span>
+                                <span id="vol-beta-val" class="font-bold">-</span>
+                            </div>
+                            <div class="relative w-full bg-gray-200 rounded-full h-2">
+                                <!-- Zones: Low(Green) | Market(Yellow) | High(Red) -->
+                                <div class="absolute left-0 w-1/3 h-full bg-green-200 rounded-l-full"></div>
+                                <div class="absolute left-1/3 w-1/3 h-full bg-yellow-200"></div>
+                                <div class="absolute right-0 w-1/3 h-full bg-red-200 rounded-r-full"></div>
+                                <!-- Marker -->
+                                <div id="vol-beta-marker"
+                                    class="absolute top-0 h-2 w-2 bg-black rounded-full border border-white shadow transition-all duration-500"
+                                    style="left: 0%"></div>
+                            </div>
+                            <p id="vol-beta-text" class="text-[10px] text-gray-500 mt-1 text-right">-</p>
+                        </div>
+
+                        <!-- 52W Volatility Spread -->
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-gray-600">52W Volatility</span>
+                                <span id="vol-spread-val" class="font-bold">-</span>
+                            </div>
+                            <div
+                                class="w-full bg-gradient-to-r from-blue-100 to-purple-100 rounded-full h-1.5 overflow-hidden">
+                                <div id="vol-spread-bar"
+                                    class="bg-gradient-to-r from-blue-500 to-purple-600 h-full rounded-full transition-all duration-500"
+                                    style="width: 0%"></div>
+                            </div>
+                            <p class="text-[10px] text-gray-400 mt-1">Spread (High/Low diff)</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. CALCULATOR -->
+            <div class="card p-4 sm:p-6 border-l-4 border-indigo-600">
+                <div
+                    class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
+                    <!-- Title and Action Buttons -->
+                    <div class="flex flex-wrap gap-2 sm:gap-4 items-center">
+                        <h3 class="text-base sm:text-lg font-bold text-gray-900">Forward Projections</h3>
+                        <div class="flex gap-1 sm:gap-2 items-center">
+                            <button type="button" onclick="saveProjections()" id="save-proj-btn"
+                                class="hidden text-xs font-bold bg-green-100 text-green-700 px-2 sm:px-3 py-1 rounded hover:bg-green-200 flex items-center gap-1">
+                                <i data-lucide="save" class="w-3 h-3"></i><span class="hidden sm:inline">Save</span>
+                            </button>
+                            <button type="button" onclick="loadProjections()" id="load-proj-btn"
+                                class="hidden text-xs font-bold bg-blue-100 text-blue-700 px-2 sm:px-3 py-1 rounded hover:bg-blue-200 flex items-center gap-1">
+                                <i data-lucide="download" class="w-3 h-3"></i><span class="hidden sm:inline">Load</span>
+                            </button>
+                            <span id="proj-saved-at"
+                                class="text-[10px] text-gray-400 font-mono hidden sm:inline"></span>
+                            <button type="button" onclick="resetProjections()"
+                                class="text-xs font-bold bg-red-100 text-red-700 px-2 sm:px-3 py-1 rounded hover:bg-red-200 flex items-center gap-1">
+                                <i data-lucide="rotate-ccw" class="w-3 h-3"></i><span
+                                    class="hidden sm:inline">Reset</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Mode Toggles - now wraps better on mobile -->
+                    <div class="flex flex-wrap items-center gap-2 sm:gap-4">
+                        <!-- CAGR Toggle -->
+                        <div class="flex items-center gap-1 sm:gap-2">
+                            <span class="text-[10px] sm:text-xs font-bold text-gray-500 uppercase">CAGR</span>
+                            <div
+                                class="relative inline-block w-8 sm:w-10 align-middle select-none transition duration-200 ease-in">
+                                <input type="checkbox" name="returnToggle" id="return-mode-toggle"
+                                    class="toggle-checkbox absolute block w-4 sm:w-5 h-4 sm:h-5 rounded-full bg-white border-4 appearance-none cursor-pointer border-gray-300" />
+                                <label for="return-mode-toggle"
+                                    class="toggle-label block overflow-hidden h-4 sm:h-5 rounded-full bg-gray-300 cursor-pointer"></label>
+                            </div>
+                            <span class="text-[10px] sm:text-xs font-bold text-gray-500 uppercase">Abs</span>
+                        </div>
+
+                        <div class="h-4 sm:h-6 w-px bg-gray-300 hidden sm:block"></div>
+
+                        <!-- Simple/Complex Toggle -->
+                        <div class="flex items-center gap-1 sm:gap-2">
+                            <span class="text-[10px] sm:text-xs font-bold text-gray-500 uppercase">Simple</span>
+                            <div
+                                class="relative inline-block w-8 sm:w-10 align-middle select-none transition duration-200 ease-in">
+                                <input type="checkbox" name="toggle" id="calc-mode-toggle"
+                                    class="toggle-checkbox absolute block w-4 sm:w-5 h-4 sm:h-5 rounded-full bg-white border-4 appearance-none cursor-pointer border-gray-300" />
+                                <label for="calc-mode-toggle"
+                                    class="toggle-label block overflow-hidden h-4 sm:h-5 rounded-full bg-gray-300 cursor-pointer"></label>
+                            </div>
+                            <span class="text-[10px] sm:text-xs font-bold text-gray-500 uppercase">Complex</span>
+                        </div>
+
+                        <!-- MISSING YEAR SWITCHER ADDED HERE -->
+                        <div id="year-switcher"
+                            class="hidden flex items-center gap-2 ml-2 bg-indigo-50 rounded-lg px-2 py-1 border border-indigo-100">
+                            <button type="button" onclick="changeYear(-1)"
+                                class="text-indigo-600 hover:text-indigo-800"><i data-lucide="chevron-left"
+                                    class="w-4 h-4"></i></button>
+                            <span id="current-year-display"
+                                class="text-xs font-bold text-indigo-700 w-12 text-center">Year 1</span>
+                            <button type="button" onclick="changeYear(1)"
+                                class="text-indigo-600 hover:text-indigo-800"><i data-lucide="chevron-right"
+                                    class="w-4 h-4"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                    <!-- Inputs -->
+                    <div class="lg:col-span-4 space-y-4">
+                        <form id="projection-form" onsubmit="event.preventDefault(); calculateProjections();">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="input-group">
+                                    <label class="input-label">TTM Revenue (M)</label>
+                                    <input type="text" id="ttmRevenue" class="input-field bg-gray-50" readonly>
+                                </div>
+                                <div class="input-group">
+                                    <label class="input-label">TTM PAT (M)</label>
+                                    <input type="text" id="ttmPat" class="input-field bg-gray-50" readonly>
+                                </div>
+                            </div>
+                            <input type="hidden" id="currentPrice"><input type="hidden" id="totalShares"><input
+                                type="hidden" id="currentPE">
+
+                            <div class="input-group">
+                                <label class="input-label text-indigo-700">Exit Year</label>
+                                <input type="number" id="exitYear" class="input-field border-indigo-200" value="5"
+                                    min="1" max="30" onchange="initCalculatorState()">
+                            </div>
+
+                            <!-- Year Switcher (Complex Mode Only) -->
+                            <div id="year-switcher"
+                                class="hidden flex justify-between items-center bg-gray-100 p-2 rounded-lg mb-4">
+                                <button type="button" onclick="changeYear(-1)" class="p-1 hover:bg-gray-200 rounded"><i
+                                        data-lucide="chevron-left" class="w-4 h-4"></i></button>
+                                <span class="font-bold text-sm">Year <span id="current-edit-year">1</span></span>
+                                <button type="button" onclick="changeYear(1)" class="p-1 hover:bg-gray-200 rounded"><i
+                                        data-lucide="chevron-right" class="w-4 h-4"></i></button>
+                            </div>
+
+                            <div id="projection-inputs">
+                                <!-- Dynamic Inputs -->
+                            </div>
+
+                            <div class="flex gap-2 mt-4">
+                                <button type="submit"
+                                    class="flex-1 bg-indigo-600 text-white font-bold py-2 rounded-lg hover:bg-indigo-700 shadow shadow-indigo-200">
+                                    Run Simulation
+                                </button>
+                                <button type="button" onclick="calculateReRate()"
+                                    class="px-4 py-2 bg-yellow-100 text-yellow-800 font-bold rounded-lg hover:bg-yellow-200"
+                                    title="Simulate instant re-rating (Year 0)">
+                                    Re-rate Now
+                                </button>
+                            </div>
+                        </form>
+
+                        <!-- AI Assistant (Integrated) -->
+                        <div
+                            class="mt-4 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl border border-indigo-200 overflow-hidden">
+                            <button onclick="toggleAIPanel()"
+                                class="w-full p-3 flex items-center justify-between hover:bg-indigo-100/50 transition">
+                                <div class="flex items-center gap-2">
+                                    <i data-lucide="bot" class="w-5 h-5 text-indigo-600"></i>
+                                    <span class="font-bold text-indigo-700">AI Assistant</span>
+                                </div>
+                                <i data-lucide="chevron-down" id="ai-panel-chevron"
+                                    class="w-4 h-4 text-indigo-400 transition-transform"></i>
+                            </button>
+
+                            <div id="ai-panel-content" class="hidden border-t border-indigo-200">
+                                <!-- Quick Actions -->
+                                <div class="p-3 bg-white/50 border-b border-indigo-100">
+                                    <p class="text-sm text-gray-500 mb-2">Quick suggestions:</p>
+                                    <div class="flex flex-wrap gap-2">
+                                        <button onclick="quickAI('Suggest projections')"
+                                            class="text-sm bg-white border border-indigo-200 px-3 py-1.5 rounded-full hover:bg-indigo-100 transition">
+                                            📊 Suggest Projections
+                                        </button>
+                                        <button onclick="quickAI('Give me year-by-year projections for 5 years')"
+                                            class="text-sm bg-white border border-indigo-200 px-3 py-1.5 rounded-full hover:bg-indigo-100 transition">
+                                            📈 Year-by-Year
+                                        </button>
+                                        <button onclick="quickAI('What growth rate is realistic based on history?')"
+                                            class="text-sm bg-white border border-indigo-200 px-3 py-1.5 rounded-full hover:bg-indigo-100 transition">
+                                            💡 Explain
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Messages -->
+                                <div id="ai-chat-messages" class="h-72 overflow-y-auto p-4 space-y-3">
+                                    <div class="ai-message bg-white rounded-lg p-3 text-sm text-gray-600">
+                                        👋 Ask me for projection suggestions or questions about this stock!
+                                    </div>
+                                </div>
+
+                                <!-- Input -->
+                                <div class="p-3 bg-white border-t border-indigo-100">
+                                    <div class="flex gap-2">
+                                        <input type="text" id="ai-chat-input" placeholder="Ask about projections..."
+                                            class="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                            onkeypress="if(event.key==='Enter') sendAIMessage()">
+                                        <button onclick="sendAIMessage()"
+                                            class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition">
+                                            <i data-lucide="send" class="w-4 h-4"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Results -->
+                    <div class="lg:col-span-8">
+                        <div id="results-area" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div
+                                class="col-span-3 flex items-center justify-center text-gray-400 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                                Simulation results will appear here.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- 5. Latest Quarter Section (NEW) -->
+            <div class="card p-4 sm:p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
+                        <i data-lucide="calendar" class="w-5 h-5 text-indigo-600"></i>
+                        Latest Quarter
+                    </h3>
+                    <span id="latest-quarter-date" class="text-sm text-gray-500 font-mono"></span>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="bg-blue-50 rounded-lg p-3">
+                        <p class="text-xs text-blue-600 font-medium">Revenue</p>
+                        <p id="lq-revenue" class="text-lg font-bold text-blue-700">-</p>
+                    </div>
+                    <div class="bg-green-50 rounded-lg p-3">
+                        <p class="text-xs text-green-600 font-medium">Gross Profit</p>
+                        <p id="lq-gross-profit" class="text-lg font-bold text-green-700">-</p>
+                    </div>
+                    <div class="bg-amber-50 rounded-lg p-3">
+                        <p class="text-xs text-amber-600 font-medium">Operating Income</p>
+                        <p id="lq-operating-income" class="text-lg font-bold text-amber-700">-</p>
+                    </div>
+                    <div class="bg-purple-50 rounded-lg p-3">
+                        <p class="text-xs text-purple-600 font-medium">Net Income</p>
+                        <p id="lq-net-income" class="text-lg font-bold text-purple-700">-</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 6. Ownership & Float Section (NEW) -->
+            <div class="card p-4 sm:p-6">
+                <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2 mb-4">
+                    <i data-lucide="pie-chart" class="w-5 h-5 text-indigo-600"></i>
+                    Ownership & Share Structure
+                </h3>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+                    <div>
+                        <div class="flex justify-between text-sm mb-1">
+                            <span class="text-gray-600">Shares Float</span>
+                            <span id="shares-float" class="font-bold">-</span>
+                        </div>
+                        <div class="flex justify-between text-sm mb-1">
+                            <span class="text-gray-600">Free Float %</span>
+                            <span id="free-float-pct" class="font-bold text-blue-600">-</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2 mt-1">
+                            <div id="free-float-bar" class="bg-blue-500 h-2 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-sm mb-1">
+                            <span class="text-gray-600">Insider Ownership</span>
+                            <span id="pct-insiders" class="font-bold text-orange-600">-</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2 mt-1">
+                            <div id="insider-bar" class="bg-orange-500 h-2 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-sm mb-1">
+                            <span class="text-gray-600">Institutional Ownership</span>
+                            <span id="pct-institutions" class="font-bold text-indigo-600">-</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2 mt-1">
+                            <div id="institution-bar" class="bg-indigo-500 h-2 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 7. Earnings Breakdown Chart (NEW) -->
+            <div class="card p-4 sm:p-6">
+                <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2 mb-4">
+                    <i data-lucide="bar-chart-3" class="w-5 h-5 text-indigo-600"></i>
+                    Income Statement Breakdown
+                </h3>
+                <div id="earnings-breakdown" class="grid grid-cols-2 md:grid-cols-5 gap-3">
+                    <div class="bg-blue-100 rounded-lg p-3 text-center">
+                        <p class="text-xs text-blue-600 font-medium">Revenue</p>
+                        <p id="eb-revenue" class="text-sm font-bold text-blue-700">-</p>
+                    </div>
+                    <div class="bg-red-100 rounded-lg p-3 text-center">
+                        <p class="text-xs text-red-600 font-medium">Cost of Revenue</p>
+                        <p id="eb-cost" class="text-sm font-bold text-red-700">-</p>
+                    </div>
+                    <div class="bg-green-100 rounded-lg p-3 text-center">
+                        <p class="text-xs text-green-600 font-medium">Gross Profit</p>
+                        <p id="eb-gross" class="text-sm font-bold text-green-700">-</p>
+                    </div>
+                    <div class="bg-amber-100 rounded-lg p-3 text-center">
+                        <p class="text-xs text-amber-600 font-medium">Op. Expenses</p>
+                        <p id="eb-opex" class="text-sm font-bold text-amber-700">-</p>
+                        <p class="text-[10px] text-amber-500 mt-1">
+                            R&D: <span id="eb-rd">-</span> | SG&A: <span id="eb-sga">-</span>
+                        </p>
+                    </div>
+                    <div class="bg-purple-100 rounded-lg p-3 text-center">
+                        <p class="text-xs text-purple-600 font-medium">Net Income</p>
+                        <p id="eb-net" class="text-sm font-bold text-purple-700">-</p>
+                        <p class="text-[10px] text-purple-500 mt-1">Tax: <span id="eb-tax">-</span></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 8. Balance Sheet Analysis (NEW) -->
+            <div class="card p-4 sm:p-6">
+                <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2 mb-4">
+                    <i data-lucide="scale" class="w-5 h-5 text-indigo-600"></i>
+                    Balance Sheet Analysis
+                </h3>
+                <div id="balance-sheet-chart">
+                    <div class="flex items-center justify-center h-64 bg-gray-50 rounded-lg text-gray-400">
+                        <i data-lucide="loader" class="w-6 h-6 animate-spin mr-2"></i> Loading Balance Sheet...
+                    </div>
+                </div>
+            </div>
+
+            <!-- 9. Annual Reports -->
+            <div class="card">
+                <div class="p-4 border-b bg-gray-50 flex flex-wrap justify-between items-center gap-2">
+                    <h3 class="font-bold text-gray-700">Financial Reports (Annual)</h3>
+                    <div class="flex items-center gap-4 text-xs text-gray-500">
+                        <span>Fiscal Year End: <strong id="fiscal-year-end" class="text-gray-700">-</strong></span>
+                        <span>Source: Local Data</span>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left">
+                        <thead class="bg-gray-50 text-xs uppercase text-gray-500 font-semibold">
+                            <tr>
+                                <th class="px-6 py-3">Fiscal Date</th>
+                                <th class="px-6 py-3">Revenue</th>
+                                <th class="px-6 py-3">Rev Growth</th>
+                                <th class="px-6 py-3">Gross Profit</th>
+                                <th class="px-6 py-3">Op. Income</th>
+                                <th class="px-6 py-3">Net Income</th>
+                                <th class="px-6 py-3">NI Growth</th>
+                                <th class="px-6 py-3">EBITDA</th>
+                            </tr>
+                        </thead>
+                        <tbody id="financial-table-body" class="divide-y divide-gray-100"></tbody>
+                    </table>
+                </div>
+                <!-- EXPAND BUTTON -->
+                <div class="p-3 border-t bg-gray-50 text-center">
+                    <button id="expand-financials-btn"
+                        class="text-sm font-bold text-indigo-600 hover:text-indigo-800 flex items-center justify-center gap-1 w-full transition-colors">
+                        <i data-lucide="chevron-down" class="w-4 h-4"></i> Show Full History
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Comparison Modal -->
+    <div id="comparison-modal"
+        class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+            <!-- Modal Header -->
+            <div class="bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <i data-lucide="bar-chart-2" class="w-6 h-6 text-white"></i>
+                    <h2 class="text-xl font-bold text-white">Stock Comparison</h2>
+                    <span class="bg-white/20 text-white text-sm px-2 py-0.5 rounded-full"><span
+                            id="modal-stock-count">0</span>/5 stocks</span>
+                </div>
+                <button onclick="closeComparisonModal()" class="text-white/80 hover:text-white transition">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="flex-1 overflow-auto p-6">
+                <!-- Empty State -->
+                <div id="comparison-empty" class="text-center py-12 text-gray-500">
+                    <i data-lucide="git-compare" class="w-16 h-16 mx-auto mb-4 opacity-30"></i>
+                    <p class="text-lg font-medium">No stocks to compare</p>
+                    <p class="text-sm mt-2">Load a stock and click "Compare" to add it to your basket</p>
+                </div>
+
+                <!-- Comparison Table -->
+                <div id="comparison-table-container" class="hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr id="comparison-header-row" class="bg-gray-100">
+                                    <th
+                                        class="px-4 py-3 text-left font-semibold text-gray-600 sticky left-0 bg-gray-100">
+                                        Metric</th>
+                                    <!-- Stock columns added dynamically -->
+                                </tr>
+                            </thead>
+                            <tbody id="comparison-body">
+                                <!-- Rows added dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- AI Compare Section -->
+                    <div
+                        class="mt-6 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-4 border border-indigo-200">
+                        <div class="flex items-center gap-2 mb-3">
+                            <i data-lucide="bot" class="w-5 h-5 text-indigo-600"></i>
+                            <span class="font-bold text-indigo-700">AI Comparison Analysis</span>
+                        </div>
+
+                        <!-- AI Result Display -->
+                        <div id="ai-compare-result"
+                            class="bg-white rounded-lg p-4 mb-4 text-sm text-gray-700 border border-indigo-100 max-h-80 overflow-y-auto prose prose-sm">
+                            <p class="text-gray-500">Ask a question or click "Compare" to get AI-powered analysis.</p>
+                        </div>
+
+                        <!-- Quick Buttons -->
+                        <div class="flex flex-wrap gap-2 mb-3">
+                            <button onclick="askAICompare('Which stock should I invest in and why?')"
+                                class="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-indigo-700 transition flex items-center gap-1">
+                                <i data-lucide="sparkles" class="w-4 h-4"></i>
+                                Which to Buy?
+                            </button>
+                            <button onclick="askAICompare('Compare valuation - which is cheaper?')"
+                                class="bg-white text-indigo-700 px-3 py-1.5 rounded-lg text-sm font-medium border border-indigo-200 hover:bg-indigo-50 transition">
+                                Compare Valuation
+                            </button>
+                            <button onclick="askAICompare('Compare growth rates and future potential')"
+                                class="bg-white text-indigo-700 px-3 py-1.5 rounded-lg text-sm font-medium border border-indigo-200 hover:bg-indigo-50 transition">
+                                Compare Growth
+                            </button>
+                        </div>
+
+                        <!-- Custom Question Input -->
+                        <div class="flex gap-2">
+                            <input type="text" id="compare-question-input"
+                                placeholder="Ask anything about these stocks..."
+                                class="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                onkeypress="if(event.key==='Enter') askAICompare()">
+                            <button onclick="askAICompare()" id="ai-compare-btn"
+                                class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 transition flex items-center gap-2">
+                                <i data-lucide="send" class="w-4 h-4"></i>
+                                Ask
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="border-t bg-gray-50 px-6 py-4 flex items-center justify-between">
+                <button onclick="clearCompareBasket()"
+                    class="text-red-600 hover:text-red-700 font-medium flex items-center gap-1">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i> Clear All
+                </button>
+                <button onclick="closeComparisonModal()"
+                    class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-300 transition">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- GLOBAL STATE ---
+        let fullHistory = [];
+        let measurementMode = false;
+        let measurePoints = [];
+        let chartInstance = null;
+        let isLocalUser = false; // Track if accessing from local network
+
+        // Financials State
+        let currentFinancialReports = [];
+        let isFinancialsExpanded = false;
+
+        // Calculator State
+        let calcMode = 'simple'; // 'simple' | 'complex'
+        let returnMode = 'cagr'; // 'cagr' | 'absolute'
+        let currentEditYear = 1;
+        let complexData = []; // Array of {bull, base, bear} objects per year
+
+        // Market & Currency State
+        let currentMarket = 'GLOBAL';  // 'GLOBAL' | 'US' | 'IN'
+        let currencyMode = 'native';  // 'native' | 'usd' (for displaying INR as USD)
+        let usdInrRate = 83.50;  // Default, fetched from API
+        let currentStockData = null;  // Store loaded stock data for currency conversion
+
+        // Comparison Basket State
+        let compareBasket = JSON.parse(localStorage.getItem('compareBasket') || '[]');
+        const MAX_COMPARE_STOCKS = 5;
+
+        // Fetch exchange rate on load
+        fetch('/api/exchange-rate').then(r => r.json()).then(d => {
+            usdInrRate = d.usd_inr || 83.50;
+            console.log('[Init] USD/INR rate:', usdInrRate);
+        }).catch(() => { usdInrRate = 83.50; });
+
+        // Market selector change handler
+        document.getElementById('market-selector').addEventListener('change', (e) => {
+            currentMarket = e.target.value;
+            console.log('[Market] Switched to:', currentMarket);
+
+            // Show/hide currency toggle
+            const currencyToggle = document.getElementById('currency-toggle');
+            if (currentMarket === 'IN') {
+                currencyToggle.classList.remove('hidden');
+                currencyToggle.classList.add('flex');
+            } else {
+                currencyToggle.classList.add('hidden');
+                currencyToggle.classList.remove('flex');
+                currencyMode = 'native';  // Reset to native when switching to US
+            }
+
+            // Update ticker list for selected market
+            updateTickerList();
+
+            // Clear current display (optional, or keep showing last loaded)
+            document.getElementById('main-content').classList.add('hidden');
+        });
+
+        // Currency toggle handlers
+        document.getElementById('btn-inr').addEventListener('click', () => {
+            if (currencyMode !== 'native') {
+                currencyMode = 'native';
+                document.getElementById('btn-inr').classList.add('active');
+                document.getElementById('btn-usd').classList.remove('active');
+                if (currentStockData) refreshDisplayWithCurrency();
+            }
+        });
+
+        document.getElementById('btn-usd').addEventListener('click', () => {
+            if (currencyMode !== 'usd') {
+                currencyMode = 'usd';
+                document.getElementById('btn-usd').classList.add('active');
+                document.getElementById('btn-inr').classList.remove('active');
+                if (currentStockData) refreshDisplayWithCurrency();
+            }
+        });
+
+        // --- STOCK SEARCH FUNCTIONALITY ---
+        let allStocks = [];  // Cache for search
+        let searchDropdownIndex = -1;
+
+        // Fetch all stocks for search on page load
+        function loadStockList() {
+            fetch('/api/stocks-search').then(r => r.json()).then(d => {
+                allStocks = d.stocks || [];
+                console.log(`[Search] Loaded ${allStocks.length} stocks for search`);
+            }).catch(err => console.error('[Search] Failed to load stocks:', err));
+        }
+        loadStockList();  // Load on startup
+
+        // Filter stocks based on search query and current market
+        function filterStocks(query) {
+            if (!query || query.length < 1) return [];
+            const q = query.toLowerCase();
+            return allStocks.filter(s => {
+                // Market filter (GLOBAL shows all)
+                if (currentMarket !== 'GLOBAL' && s.market !== currentMarket) return false;
+                // Match by symbol or name
+                return s.symbol.toLowerCase().includes(q) || s.name.toLowerCase().includes(q);
+            }).slice(0, 10); // Limit to 10 results
+        }
+
+        // Render search dropdown
+        function renderSearchDropdown(results) {
+            const dropdown = document.getElementById('search-dropdown');
+            if (results.length === 0) {
+                dropdown.classList.add('hidden');
+                return;
+            }
+
+            dropdown.innerHTML = results.map((s, i) => `
+                <div class="search-result px-3 py-2 hover:bg-indigo-50 cursor-pointer flex items-center gap-2 ${i === searchDropdownIndex ? 'bg-indigo-100' : ''}"
+                     data-symbol="${s.symbol}" data-market="${s.market}">
+                    <span class="text-lg">${s.market === 'IN' ? '🇮🇳' : '🇺🇸'}</span>
+                    <div class="flex-1">
+                        <div class="font-semibold text-gray-800">${s.symbol}</div>
+                        <div class="text-xs text-gray-500 truncate">${s.name}</div>
+                    </div>
+                    <span class="text-xs text-gray-400">${s.sector || ''}</span>
+                </div>
+            `).join('');
+
+            dropdown.classList.remove('hidden');
+
+            // Add click handlers
+            dropdown.querySelectorAll('.search-result').forEach(el => {
+                el.addEventListener('click', () => selectSearchResult(el.dataset.symbol, el.dataset.market));
+            });
+        }
+
+        // Select a search result and load it
+        function selectSearchResult(symbol, market) {
+            document.getElementById('ticker').value = symbol;
+            document.getElementById('search-dropdown').classList.add('hidden');
+
+            // Don't change the market selector - keep search global
+            // But do show currency toggle if loading an Indian stock
+            const currencyToggle = document.getElementById('currency-toggle');
+            if (market === 'IN') {
+                currencyToggle.classList.remove('hidden');
+                currencyToggle.classList.add('flex');
+            } else {
+                currencyToggle.classList.add('hidden');
+                currencyToggle.classList.remove('flex');
+                currencyMode = 'native';
+            }
+
+            // Load the stock
+            loadData();
+        }
+
+        // Search input handlers
+        const tickerInput = document.getElementById('ticker');
+        let searchTimeout = null;
+
+        tickerInput.addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            searchDropdownIndex = -1;
+            searchTimeout = setTimeout(() => {
+                const results = filterStocks(e.target.value);
+                renderSearchDropdown(results);
+            }, 150);  // Debounce 150ms
+        });
+
+        // Keyboard navigation
+        tickerInput.addEventListener('keydown', (e) => {
+            const dropdown = document.getElementById('search-dropdown');
+            const items = dropdown.querySelectorAll('.search-result');
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                searchDropdownIndex = Math.min(searchDropdownIndex + 1, items.length - 1);
+                renderSearchDropdown(filterStocks(tickerInput.value));
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                searchDropdownIndex = Math.max(searchDropdownIndex - 1, 0);
+                renderSearchDropdown(filterStocks(tickerInput.value));
+            } else if (e.key === 'Enter' && searchDropdownIndex >= 0 && items[searchDropdownIndex]) {
+                e.preventDefault();
+                const item = items[searchDropdownIndex];
+                selectSearchResult(item.dataset.symbol, item.dataset.market);
+            } else if (e.key === 'Escape') {
+                dropdown.classList.add('hidden');
+            }
+        });
+
+        // Hide dropdown on click outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#ticker') && !e.target.closest('#search-dropdown')) {
+                document.getElementById('search-dropdown').classList.add('hidden');
+            }
+        });
+
+        // Legacy function (kept for compatibility)
+        function updateTickerList() {
+            // Now handled by search functionality
+        }
+
+        // Refresh display with current currency mode (for Indian stocks)
+        function refreshDisplayWithCurrency() {
+            if (!currentStockData) return;
+            populateOverview(currentStockData.overview, currentStockData.quote['Global Quote']);
+            populateFundamentals(currentStockData.overview, currentStockData.quote['Global Quote']);
+            populateOwnership(currentStockData.overview);
+            populateLatestQuarter(currentStockData.income, currentStockData.overview);
+            populateEarningsBreakdown(currentStockData.income);
+            populateCalculator(currentStockData);
+
+            // Re-render visualizations that show currency
+            renderFairValueBar(currentStockData);
+            renderValuationGauge(currentStockData);
+            if (currentStockData.market === 'IN' && currentStockData.analyst_yf) {
+                renderAnalystRatingsYF(currentStockData.analyst_yf, currentStockData.overview);
+            } else {
+                renderAnalystRatings(currentStockData.overview);
+            }
+            // Re-render financial table
+            renderFinancialTable(currentStockData.income);
+        }
+
+        // Check if user is local (for showing admin-only features)
+        fetch('/api/is-local').then(r => r.json()).then(d => {
+            isLocalUser = d.is_local;
+            if (isLocalUser) {
+                // Show Save/Load buttons for local users
+                document.getElementById('save-proj-btn').classList.remove('hidden');
+                document.getElementById('load-proj-btn').classList.remove('hidden');
+            }
+        }).catch(() => { isLocalUser = false; });
+
+        // --- AI CHAT ASSISTANT ---
+        let aiPanelOpen = false;
+
+        function toggleAIPanel() {
+            aiPanelOpen = !aiPanelOpen;
+            const content = document.getElementById('ai-panel-content');
+            const chevron = document.getElementById('ai-panel-chevron');
+
+            if (aiPanelOpen) {
+                content.classList.remove('hidden');
+                chevron.style.transform = 'rotate(180deg)';
+            } else {
+                content.classList.add('hidden');
+                chevron.style.transform = 'rotate(0deg)';
+            }
+            lucide.createIcons();
+        }
+
+        function quickAI(prompt) {
+            document.getElementById('ai-chat-input').value = prompt;
+            sendAIMessage();
+        }
+
+        function addAIMessage(content, isUser = false, projections = null) {
+            const container = document.getElementById('ai-chat-messages');
+            const msgDiv = document.createElement('div');
+            msgDiv.className = isUser
+                ? 'user-message bg-indigo-100 rounded-lg p-3 text-sm ml-6'
+                : 'ai-message bg-white rounded-lg p-3 text-sm';
+
+            // Apply markdown formatting for AI responses
+            const formattedContent = isUser ? content : formatMarkdown(content);
+            msgDiv.innerHTML = `<div class="text-gray-700 leading-relaxed">${formattedContent}</div>`;
+
+            // Auto-apply projections if they exist
+            if (projections && !isUser) {
+                applyAIProjections(projections);
+                // Show notification that projections were applied
+                const notice = document.createElement('div');
+                notice.className = 'mt-2 text-xs text-green-600 font-medium flex items-center gap-1';
+                notice.innerHTML = '<i data-lucide="check-circle" class="w-3 h-3"></i> Projections applied to calculator';
+                msgDiv.appendChild(notice);
+            }
+
+            container.appendChild(msgDiv);
+            container.scrollTop = container.scrollHeight;
+            lucide.createIcons();
+        }
+
+        async function sendAIMessage() {
+            const input = document.getElementById('ai-chat-input');
+            const message = input.value.trim();
+            if (!message) return;
+
+            // Get current ticker
+            const ticker = document.getElementById('ticker').value.trim().toUpperCase() ||
+                document.getElementById('company-ticker')?.textContent;
+
+            if (!ticker) {
+                addAIMessage("Please load a stock first, then ask me about it!", false);
+                return;
+            }
+
+            // Add user message
+            addAIMessage(message, true);
+            input.value = '';
+
+            // Show typing indicator
+            addAIMessage("🤔 Thinking...", false);
+
+            try {
+                const res = await fetch('/api/ai-chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ticker, message, years: 5 })
+                });
+
+                const data = await res.json();
+
+                // Remove typing indicator
+                const messages = document.getElementById('ai-chat-messages');
+                messages.removeChild(messages.lastChild);
+
+                if (data.error) {
+                    addAIMessage(`❌ ${data.error}`, false);
+                    return;
+                }
+
+                // Display response
+                addAIMessage(data.response, false, data.projections);
+
+                // If projections, show summary
+                if (data.projections && data.intent !== 'question') {
+                    showProjectionSummary(data.projections, data.intent);
+                }
+
+            } catch (e) {
+                const messages = document.getElementById('ai-chat-messages');
+                if (messages.lastChild && messages.lastChild.innerText.includes('Thinking')) {
+                    messages.removeChild(messages.lastChild);
+                }
+                console.error("AI Error:", e);
+                const stack = e.stack || '';
+                const lineInfo = stack.split('\n')[1] || '';
+                addAIMessage(`❌ Error: ${e.message || e}<br><small class="text-xs text-gray-400">${lineInfo}</small>`, false);
+            }
+        }
+
+        function showProjectionSummary(proj, intent) {
+            const container = document.getElementById('ai-chat-messages');
+            const summaryDiv = document.createElement('div');
+            summaryDiv.className = 'ai-message bg-indigo-50 border border-indigo-200 rounded-xl p-4 text-sm';
+
+            if (intent === 'complex_projection' && proj.years) {
+                // Complex projection summary
+                let html = '<p class="font-bold text-indigo-800 mb-2">📊 Year-by-Year Projections:</p>';
+                html += '<table class="w-full text-sm"><tr class="text-gray-500 font-semibold"><td>Year</td><td>Bull</td><td>Base</td><td>Bear</td></tr>';
+                proj.years.forEach(y => {
+                    const rev = y.revenue || y;
+                    html += `<tr><td class="py-1">Y${y.year}</td><td class="text-green-600">${rev.bull || y.bull}%</td><td>${rev.base || y.base}%</td><td class="text-red-600">${rev.bear || y.bear}%</td></tr>`;
+                });
+                html += '</table>';
+                if (proj.target_pe) {
+                    html += `<p class="mt-3 text-gray-700 font-medium">Target PE: <span class="text-green-600">${proj.target_pe.bull}</span> / ${proj.target_pe.base} / <span class="text-red-600">${proj.target_pe.bear}</span></p>`;
+                }
+                summaryDiv.innerHTML = html;
+            } else {
+                // Simple projection summary
+                let html = '<p class="font-bold text-indigo-800 mb-2">📊 Suggested Projections:</p>';
+                if (proj.revenue_growth) html += `<p class="py-1">Revenue: <span class="text-green-600 font-medium">${proj.revenue_growth.bull}%</span> / ${proj.revenue_growth.base}% / <span class="text-red-600">${proj.revenue_growth.bear}%</span></p>`;
+                if (proj.pat_growth) html += `<p class="py-1">PAT: <span class="text-green-600 font-medium">${proj.pat_growth.bull}%</span> / ${proj.pat_growth.base}% / <span class="text-red-600">${proj.pat_growth.bear}%</span></p>`;
+                if (proj.target_pe) html += `<p class="py-1">Target PE: <span class="text-green-600 font-medium">${proj.target_pe.bull}</span> / ${proj.target_pe.base} / <span class="text-red-600">${proj.target_pe.bear}</span></p>`;
+                summaryDiv.innerHTML = html;
+            }
+
+            container.appendChild(summaryDiv);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function applyAIProjections(proj) {
+            if (!proj) return;
+
+            // Check if it's complex (year-by-year) or simple projection
+            if (proj.years && proj.years.length > 0) {
+                // Complex mode - switch to complex and fill year-by-year
+                document.getElementById('calc-mode-toggle').checked = true;
+                calcMode = 'complex';
+
+                // Update exit year to match projection
+                document.getElementById('exitYear').value = proj.years.length;
+
+                // Fill complex data using the correct structure
+                complexData = [{ rev: { bull: 0, base: 0, bear: 0 }, pat: { bull: 0, base: 0, bear: 0 }, pe: { bull: 0, base: 0, bear: 0 } }];
+                proj.years.forEach(y => {
+                    complexData.push({
+                        rev: {
+                            bull: y.revenue?.bull || y.bull || 15,
+                            base: y.revenue?.base || y.base || 10,
+                            bear: y.revenue?.bear || y.bear || 5
+                        },
+                        pat: {
+                            bull: y.pat?.bull || y.bull || 15,
+                            base: y.pat?.base || y.base || 10,
+                            bear: y.pat?.bear || y.bear || 5
+                        },
+                        pe: {
+                            bull: proj.target_pe?.bull || 30,
+                            base: proj.target_pe?.base || 25,
+                            bear: proj.target_pe?.bear || 20
+                        }
+                    });
+                });
+
+                // Reinitialize calculator and render
+                initCalculatorState();
+
+                addAIMessage("✅ Applied year-by-year projections! Switched to Complex mode.", false);
+                calculateProjections();
+            } else {
+                // Simple mode
+                document.getElementById('calc-mode-toggle').checked = false;
+                calcMode = 'simple';
+
+                // Initialize the calculator first to create the input fields
+                initCalculatorState();
+
+                // Now fill the simple inputs with correct IDs (camelCase)
+                setTimeout(() => {
+                    if (proj.revenue_growth) {
+                        const revBull = document.getElementById('revBull');
+                        const revBase = document.getElementById('revBase');
+                        const revBear = document.getElementById('revBear');
+                        if (revBull) revBull.value = proj.revenue_growth.bull || '';
+                        if (revBase) revBase.value = proj.revenue_growth.base || '';
+                        if (revBear) revBear.value = proj.revenue_growth.bear || '';
+                    }
+                    if (proj.pat_growth) {
+                        const patBull = document.getElementById('patBull');
+                        const patBase = document.getElementById('patBase');
+                        const patBear = document.getElementById('patBear');
+                        if (patBull) patBull.value = proj.pat_growth.bull || '';
+                        if (patBase) patBase.value = proj.pat_growth.base || '';
+                        if (patBear) patBear.value = proj.pat_growth.bear || '';
+                    }
+                    if (proj.target_pe) {
+                        const peBull = document.getElementById('peBull');
+                        const peBase = document.getElementById('peBase');
+                        const peBear = document.getElementById('peBear');
+                        if (peBull) peBull.value = proj.target_pe.bull || '';
+                        if (peBase) peBase.value = proj.target_pe.base || '';
+                        if (peBear) peBear.value = proj.target_pe.bear || '';
+                    }
+
+                    // Trigger calculation
+                    calculateProjections();
+                }, 50);
+
+                addAIMessage("✅ Applied projections to calculator!", false);
+            }
+        }
+
+        // --- COMPARISON BASKET ---
+        function updateCompareBasketUI() {
+            const container = document.getElementById('compare-basket-container');
+            const countEl = document.getElementById('basket-count');
+            const modalCountEl = document.getElementById('modal-stock-count');
+
+            countEl.textContent = compareBasket.length;
+            if (modalCountEl) modalCountEl.textContent = compareBasket.length;
+
+            if (compareBasket.length > 0) {
+                container.classList.remove('hidden');
+            } else {
+                container.classList.add('hidden');
+            }
+            localStorage.setItem('compareBasket', JSON.stringify(compareBasket));
+        }
+
+        function addToCompare() {
+            const ticker = document.getElementById('ticker').value.trim().toUpperCase();
+            if (!ticker) {
+                alert('Please enter a ticker first');
+                return;
+            }
+
+            // Check if already in basket
+            if (compareBasket.find(s => s.ticker === ticker)) {
+                alert(`${ticker} is already in your comparison basket`);
+                return;
+            }
+
+            // Check limit
+            if (compareBasket.length >= MAX_COMPARE_STOCKS) {
+                alert(`Maximum ${MAX_COMPARE_STOCKS} stocks allowed. Remove one first.`);
+                return;
+            }
+
+            // Fetch stock data and add to basket
+            fetch(`/api/stock-data?ticker=${ticker}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.error) {
+                        alert(`Error: ${data.error}`);
+                        return;
+                    }
+
+                    const ov = data.overview || {};
+                    const quote = data.quote?.['Global Quote'] || {};
+
+                    compareBasket.push({
+                        ticker: ticker,
+                        name: ov.Name || ticker,
+                        market: currentMarket,
+                        price: parseFloat(quote['05. price']) || 0,
+                        pe: parseFloat(ov.PERatio) || 0,
+                        eps: parseFloat(ov.EPS) || 0,
+                        marketCap: parseFloat(ov.MarketCapitalization) || 0,
+                        revenue: parseFloat(ov.RevenueTTM) || 0,
+                        profitMargin: parseFloat(ov.ProfitMargin) || 0,
+                        revenueGrowth: parseFloat(ov.QuarterlyRevenueGrowthYOY) || 0,
+                        earningsGrowth: parseFloat(ov.QuarterlyEarningsGrowthYOY) || 0,
+                        beta: parseFloat(ov.Beta) || 0,
+                        sector: ov.Sector || 'N/A'
+                    });
+
+                    updateCompareBasketUI();
+                    alert(`✅ Added ${ticker} to comparison basket (${compareBasket.length}/${MAX_COMPARE_STOCKS})`);
+                })
+                .catch(err => {
+                    alert(`Failed to add ${ticker}: ${err.message}`);
+                });
+        }
+
+        function removeFromCompare(ticker) {
+            compareBasket = compareBasket.filter(s => s.ticker !== ticker);
+            updateCompareBasketUI();
+            renderComparisonTable();
+        }
+
+        function clearCompareBasket() {
+            if (confirm('Clear all stocks from comparison basket?')) {
+                compareBasket = [];
+                updateCompareBasketUI();
+                renderComparisonTable();
+            }
+        }
+
+        function openComparisonModal() {
+            document.getElementById('comparison-modal').classList.remove('hidden');
+            renderComparisonTable();
+            lucide.createIcons();
+        }
+
+        function closeComparisonModal() {
+            document.getElementById('comparison-modal').classList.add('hidden');
+        }
+
+        function formatLargeNum(num, showCurrency = true) {
+            const prefix = showCurrency ? '$' : '';
+            if (num >= 1e12) return `${prefix}${(num / 1e12).toFixed(2)}T`;
+            if (num >= 1e9) return `${prefix}${(num / 1e9).toFixed(2)}B`;
+            if (num >= 1e6) return `${prefix}${(num / 1e6).toFixed(2)}M`;
+            return `${prefix}${num.toFixed(2)}`;
+        }
+
+        function formatPct(val) {
+            if (val === 0 || isNaN(val)) return 'N/A';
+            const pct = Math.abs(val) < 1 ? val * 100 : val;
+            return `${pct.toFixed(1)}%`;
+        }
+
+        function renderComparisonTable() {
+            const emptyState = document.getElementById('comparison-empty');
+            const tableContainer = document.getElementById('comparison-table-container');
+            const headerRow = document.getElementById('comparison-header-row');
+            const body = document.getElementById('comparison-body');
+            const modalCount = document.getElementById('modal-stock-count');
+
+            if (modalCount) modalCount.textContent = compareBasket.length;
+
+            if (compareBasket.length === 0) {
+                emptyState.classList.remove('hidden');
+                tableContainer.classList.add('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            tableContainer.classList.remove('hidden');
+
+            // Build header with stock names
+            headerRow.innerHTML = '<th class="px-4 py-3 text-left font-semibold text-gray-600 sticky left-0 bg-gray-100 min-w-[120px]">Metric</th>';
+            compareBasket.forEach(stock => {
+                const flag = stock.market === 'IN' ? '🇮🇳' : '🇺🇸';
+                headerRow.innerHTML += `
+                    <th class="px-4 py-3 text-center min-w-[140px]">
+                        <div class="font-bold text-gray-800">${flag} ${stock.ticker}</div>
+                        <div class="text-xs text-gray-500 font-normal truncate max-w-[130px]">${stock.name}</div>
+                        <button onclick="removeFromCompare('${stock.ticker}')" class="text-red-500 hover:text-red-700 text-xs mt-1">✕ Remove</button>
+                    </th>
+                `;
+            });
+
+            // Define metrics
+            const metrics = [
+                { label: 'Price', key: 'price', format: v => `$${v.toFixed(2)}`, higher: false },
+                { label: 'PE Ratio', key: 'pe', format: v => v.toFixed(2), higher: false },
+                { label: 'EPS', key: 'eps', format: v => `$${v.toFixed(2)}`, higher: true },
+                { label: 'Market Cap', key: 'marketCap', format: formatLargeNum, higher: true },
+                { label: 'Revenue (TTM)', key: 'revenue', format: formatLargeNum, higher: true },
+                { label: 'Profit Margin', key: 'profitMargin', format: formatPct, higher: true },
+                { label: 'Revenue Growth YoY', key: 'revenueGrowth', format: formatPct, higher: true },
+                { label: 'Earnings Growth YoY', key: 'earningsGrowth', format: formatPct, higher: true },
+                { label: 'Beta', key: 'beta', format: v => v.toFixed(2), higher: false },
+                { label: 'Sector', key: 'sector', format: v => v, higher: null }
+            ];
+
+            // Normalize Indian stock values to USD
+            const normalizedBasket = compareBasket.map(stock => {
+                if (stock.market === 'IN') {
+                    return {
+                        ...stock,
+                        price: stock.price / usdInrRate,
+                        marketCap: stock.marketCap / usdInrRate,
+                        revenue: stock.revenue / usdInrRate,
+                        eps: stock.eps / usdInrRate
+                    };
+                }
+                return stock;
+            });
+
+            // Build rows
+            body.innerHTML = '';
+            metrics.forEach(metric => {
+                const values = normalizedBasket.map(s => s[metric.key]);
+                const numValues = values.filter(v => typeof v === 'number' && v !== 0 && !isNaN(v));
+                const max = Math.max(...numValues);
+                const min = Math.min(...numValues);
+
+                let row = `<tr class="border-b">`;
+                row += `<td class="px-4 py-3 font-medium text-gray-700 sticky left-0 bg-white">${metric.label}</td>`;
+
+                normalizedBasket.forEach((stock, i) => {
+                    const val = stock[metric.key];
+                    const formatted = metric.format(val);
+                    let cellClass = 'text-center text-gray-800';
+
+                    // Color coding for best/worst
+                    if (metric.higher !== null && typeof val === 'number' && val !== 0 && numValues.length > 1) {
+                        if (metric.higher && val === max) cellClass += ' bg-green-100 text-green-700 font-bold';
+                        else if (metric.higher && val === min) cellClass += ' bg-red-50 text-red-600';
+                        else if (!metric.higher && val === min) cellClass += ' bg-green-100 text-green-700 font-bold';
+                        else if (!metric.higher && val === max) cellClass += ' bg-red-50 text-red-600';
+                    }
+
+                    // Show INR conversion note
+                    const inrNote = compareBasket[i].market === 'IN' ? '<span class="text-xs text-gray-400 block">(USD adj.)</span>' : '';
+                    row += `<td class="px-4 py-3 ${cellClass}">${formatted}${inrNote}</td>`;
+                });
+
+                row += '</tr>';
+                body.innerHTML += row;
+            });
+
+            lucide.createIcons();
+        }
+
+        // Simple markdown to HTML converter
+        function formatMarkdown(text) {
+            if (!text) return '';
+            return text
+                // Headers
+                .replace(/^### (.+)$/gm, '<h4 class="font-bold text-gray-800 mt-3 mb-1">$1</h4>')
+                .replace(/^## (.+)$/gm, '<h3 class="font-bold text-gray-900 text-lg mt-4 mb-2">$1</h3>')
+                .replace(/^# (.+)$/gm, '<h2 class="font-bold text-gray-900 text-xl mt-4 mb-2">$1</h2>')
+                // Bold
+                .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold text-gray-900">$1</strong>')
+                // Italic
+                .replace(/\*(.+?)\*/g, '<em>$1</em>')
+                // Bullet points
+                .replace(/^\* (.+)$/gm, '<li class="ml-4">$1</li>')
+                .replace(/^- (.+)$/gm, '<li class="ml-4">$1</li>')
+                // Numbered lists
+                .replace(/^\d+\. (.+)$/gm, '<li class="ml-4 list-decimal">$1</li>')
+                // Paragraphs (double newlines)
+                .replace(/\n\n/g, '</p><p class="my-2">')
+                // Single newlines to breaks
+                .replace(/\n/g, '<br>')
+                // Wrap in paragraph
+                .replace(/^/, '<p class="my-2">')
+                .replace(/$/, '</p>');
+        }
+
+        async function askAICompare(preset = null) {
+            if (compareBasket.length < 2) {
+                alert('Need at least 2 stocks to compare');
+                return;
+            }
+
+            // Get question from preset or input field
+            const inputEl = document.getElementById('compare-question-input');
+            const question = preset || inputEl?.value?.trim() || 'Which stock should I invest in and why?';
+
+            // Clear input if used
+            if (!preset && inputEl) inputEl.value = '';
+
+            const resultEl = document.getElementById('ai-compare-result');
+            const btn = document.getElementById('ai-compare-btn');
+
+            resultEl.innerHTML = '<p class="text-gray-500">🤔 Analyzing: <em>' + question + '</em></p>';
+            btn.disabled = true;
+            btn.classList.add('opacity-50');
+
+            try {
+                const tickers = compareBasket.map(s => s.ticker);
+                const res = await fetch('/api/ai-compare', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tickers, question })
+                });
+
+                const data = await res.json();
+
+                if (data.error) {
+                    resultEl.innerHTML = `<p class="text-red-600">❌ ${data.error}</p>`;
+                } else {
+                    const formatted = formatMarkdown(data.response || data.analysis || 'No analysis available');
+                    resultEl.innerHTML = formatted;
+                }
+            } catch (err) {
+                resultEl.innerHTML = `<p class="text-red-600">❌ Failed to get AI analysis: ${err.message}</p>`;
+            }
+
+            btn.disabled = false;
+            btn.classList.remove('opacity-50');
+        }
+
+        // Initialize basket UI on load
+        updateCompareBasketUI();
+
+        // --- INIT ---
+        lucide.createIcons();
+        // Stock search list is loaded by loadStockList() - no need for datalist
+
+        // --- FETCH LOGIC ---
+        document.getElementById('fetch-data-btn').addEventListener('click', loadData);
+
+        // --- PUBLIC TICKER REQUEST ---
+        document.getElementById('request-ticker-btn').addEventListener('click', async () => {
+            let ticker = document.getElementById('ticker').value.trim().toUpperCase();
+            if (!ticker) return alert('Enter a ticker symbol first');
+
+            // Apply market-specific ticker formatting
+            if (currentMarket === 'IN') {
+                if (!ticker.endsWith('.NS') && !ticker.endsWith('.BO')) {
+                    ticker += '.NS';
+                }
+            } else {
+                // Reject Indian tickers in US mode
+                if (ticker.endsWith('.NS') || ticker.endsWith('.BO')) {
+                    return alert('Switch to India market for Indian stocks');
+                }
+            }
+
+            const btn = document.getElementById('request-ticker-btn');
+            const originalHTML = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> Requesting...';
+            lucide.createIcons();
+
+            try {
+                const res = await fetch('/api/request-ticker', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ticker })
+                });
+                const data = await res.json();
+                alert(data.message || data.error);
+            } catch (e) {
+                alert('Request failed. Try again later.');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHTML;
+                lucide.createIcons();
+            }
+        });
+
+        // --- PUBLIC TICKER REFRESH ---
+        document.getElementById('refresh-ticker-btn').addEventListener('click', async () => {
+            let ticker = document.getElementById('ticker').value.trim().toUpperCase();
+            if (!ticker) return alert('Enter a ticker symbol first');
+
+            // Apply market-specific ticker formatting
+            if (currentMarket === 'IN') {
+                if (!ticker.endsWith('.NS') && !ticker.endsWith('.BO')) {
+                    ticker += '.NS';
+                }
+            } else {
+                // Reject Indian tickers in US mode
+                if (ticker.endsWith('.NS') || ticker.endsWith('.BO')) {
+                    return alert('Switch to India market for Indian stocks');
+                }
+            }
+
+            const btn = document.getElementById('refresh-ticker-btn');
+            const originalHTML = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> Refreshing...';
+            lucide.createIcons();
+
+            try {
+                const res = await fetch('/api/refresh-ticker', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ticker })
+                });
+                const data = await res.json();
+                alert(data.message || data.error);
+            } catch (e) {
+                alert('Refresh failed. Try again later.');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHTML;
+                lucide.createIcons();
+            }
+        });
+
+        async function loadData() {
+            let ticker = document.getElementById('ticker').value.trim().toUpperCase();
+            if (!ticker) return;
+
+            const errEl = document.getElementById('api-error-message');
+            errEl.textContent = "Loading...";
+
+            // Market validation and ticker normalization
+            if (currentMarket === 'IN') {
+                // For Indian market, auto-append .NS if no suffix
+                if (!ticker.endsWith('.NS') && !ticker.endsWith('.BO')) {
+                    ticker += '.NS';
+                }
+            } else if (currentMarket === 'US') {
+                // For US market only, reject Indian tickers
+                if (ticker.endsWith('.NS') || ticker.endsWith('.BO')) {
+                    errEl.textContent = "Switch to Global or India market for Indian stocks";
+                    return;
+                }
+            }
+            // GLOBAL mode: accept both US and Indian tickers as-is
+
+            try {
+                const res = await fetch(`/api/stock-data?ticker=${ticker}`);
+                if (!res.ok) throw new Error("Data not found locally.");
+                const data = await res.json();
+
+                // Store for currency conversion
+                currentStockData = data;
+
+                document.getElementById('main-content').classList.remove('hidden');
+                errEl.textContent = "";
+
+                // Show Data Date
+                if (data.last_updated) {
+                    document.getElementById('data-updated-container').classList.remove('hidden');
+                    document.getElementById('data-updated-date').textContent = data.last_updated;
+                } else {
+                    document.getElementById('data-updated-container').classList.add('hidden');
+                }
+
+                populateOverview(data.overview, data.quote['Global Quote']);
+                populateFundamentals(data.overview, data.quote['Global Quote']);
+                prepareChartData(data.history['Monthly Adjusted Time Series']);
+
+                // Handle analyst ratings (different format for Indian stocks)
+                if (data.market === 'IN' && data.analyst_yf) {
+                    renderAnalystRatingsYF(data.analyst_yf, data.overview);
+                } else {
+                    renderAnalystRatings(data.overview);
+                }
+
+                populateCalculator(data);
+
+                // Calculate and render Snowflake health scores
+                const snowflakeScores = calculateSnowflakeScores(data);
+                renderSnowflakeChart(snowflakeScores);
+                populateVolatility(data.overview);
+
+                // Render Valuation visualizations
+                renderValuationGauge(data);
+                renderFairValueBar(data);
+
+                // Populate new sections
+                populateOwnership(data.overview);
+                populateLatestQuarter(data.income, data.overview);
+                populateEarningsBreakdown(data.income);
+                renderBalanceSheetChart(data.balance_sheet);
+
+                // Reset expanded state on new load
+                isFinancialsExpanded = false;
+                renderFinancialTable(data.income.annualReports);
+
+                lucide.createIcons();
+            } catch (e) { errEl.textContent = e.message; }
+        }
+
+        function formatCurrency(val, applyConversion = false) {
+            if (!val || val === 'None') return '-';
+            val = parseFloat(val);
+
+            // Determine if current stock is Indian
+            const isIndian = (typeof currentStockData !== 'undefined' && currentStockData && currentStockData.market === 'IN');
+
+            // Apply conversion if in USD mode for Indian stocks (and conversion requested)
+            if (applyConversion && isIndian && currencyMode === 'usd') {
+                val = val / usdInrRate; // usdInrRate is global
+            }
+
+            const symbol = (isIndian && currencyMode === 'native') ? '₹' : '$';
+
+            if (Math.abs(val) > 1_000_000_000) return symbol + (val / 1_000_000_000).toFixed(2) + 'B';
+            if (Math.abs(val) > 1_000_000) return symbol + (val / 1_000_000).toFixed(2) + 'M';
+            if (Math.abs(val) > 1_000) return symbol + (val / 1_000).toFixed(2) + 'K';
+            return symbol + val.toFixed(2);
+        }
+
+        function formatPrice(val) {
+            if (!val || val === 'None') return '-';
+            val = parseFloat(val);
+
+            // Determine if current stock is Indian
+            const isIndian = (typeof currentStockData !== 'undefined' && currentStockData && currentStockData.market === 'IN');
+
+            // Apply USD conversion for Indian stocks if in USD mode
+            if (isIndian && currencyMode === 'usd') {
+                val = val / usdInrRate;
+            }
+
+            const symbol = (isIndian && currencyMode === 'native') ? '₹' : '$';
+            return symbol + val.toFixed(2);
+        }
+
+        function formatNumber(val, decimals = 2) {
+            if (!val || val === 'None') return '-';
+            return parseFloat(val).toLocaleString(undefined, { maximumFractionDigits: decimals });
+        }
+        function set(id, val) {
+            const el = document.getElementById(id); if (el) el.textContent = (val && val !== 'None') ?
+                val : '-';
+        }
+
+        // --- POPULATORS ---
+
+        // Country to flag emoji mapping
+        function getCountryFlag(country) {
+            const flags = {
+                'USA': '🇺🇸', 'United States': '🇺🇸',
+                'India': '🇮🇳', 'INDIA': '🇮🇳',
+                'China': '🇨🇳', 'CHINA': '🇨🇳',
+                'Japan': '🇯🇵', 'JAPAN': '🇯🇵',
+                'UK': '🇬🇧', 'United Kingdom': '🇬🇧',
+                'Germany': '🇩🇪', 'GERMANY': '🇩🇪',
+                'France': '🇫🇷', 'FRANCE': '🇫🇷',
+                'Canada': '🇨🇦', 'CANADA': '🇨🇦',
+                'Australia': '🇦🇺', 'AUSTRALIA': '🇦🇺',
+                'South Korea': '🇰🇷', 'SOUTH KOREA': '🇰🇷',
+                'Taiwan': '🇹🇼', 'TAIWAN': '🇹🇼',
+                'Netherlands': '🇳🇱', 'NETHERLANDS': '🇳🇱',
+                'Switzerland': '🇨🇭', 'SWITZERLAND': '🇨🇭',
+            };
+            return flags[country] || '🌐';
+        }
+
+        function populateOverview(ov, quote) {
+            // Company name as clickable link
+            const nameLink = document.getElementById('company-name-link');
+            nameLink.textContent = ov.Name;
+            if (ov.OfficialSite && ov.OfficialSite !== 'None') {
+                nameLink.href = ov.OfficialSite;
+                nameLink.title = 'Visit official website';
+            } else {
+                nameLink.removeAttribute('href');
+                nameLink.style.cursor = 'default';
+            }
+
+            // Country flag
+            document.getElementById('country-flag').textContent = getCountryFlag(ov.Country);
+
+            // Basic info
+            document.getElementById('company-ticker').textContent = ov.Symbol;
+            document.getElementById('company-industry').textContent = ov.Industry;
+            document.getElementById('company-exchange').textContent = ov.Exchange;
+            document.getElementById('asset-type').textContent = ov.AssetType || '';
+            document.getElementById('company-desc').textContent = ov.Description;
+
+            let price = parseFloat(quote['05. price']);
+            let change = parseFloat(quote['09. change']);
+
+            // Apply currency conversion for Indian stocks in USD mode
+            // Determine if current stock is Indian
+            const isIndian = (typeof currentStockData !== 'undefined' && currentStockData && currentStockData.market === 'IN');
+
+            if (isIndian && currencyMode === 'usd') {
+                price = price / usdInrRate;
+                change = change / usdInrRate;
+            }
+
+            const symbol = (isIndian && currencyMode === 'native') ? '₹' : '$';
+
+            document.getElementById('header-price').textContent = symbol + price.toFixed(2);
+            const cEl = document.getElementById('header-change');
+            cEl.textContent = `${change > 0 ? '+' : ''}${change.toFixed(2)} (${parseFloat(quote['10. change percent']).toFixed(2)}%)`;
+            cEl.className = change >= 0 ? 'text-xs sm:text-sm font-medium text-green-600' : 'text-xs sm:text-sm font-medium text-red-600';
+
+            set('stat-mcap', formatCurrency(ov.MarketCapitalization, true));
+            set('stat-rev', formatCurrency(ov.RevenueTTM, true));
+            set('stat-eps', ov.EPS);
+            set('stat-beta', ov.Beta);
+        }
+
+        function populateFundamentals(ov, quote) {
+            // Valuation metrics
+            set('val-pe', ov.TrailingPE);
+            set('val-fpe', ov.ForwardPE);
+            set('val-peg', ov.PEGRatio);
+            set('val-pb', ov.PriceToBookRatio);
+            set('val-bv', formatPrice(ov.BookValue));
+            set('val-ps', ov.PriceToSalesRatioTTM);
+            set('val-ev-rev', ov.EVToRevenue);
+            set('val-ev-ebitda', ov.EVToEBITDA);
+            set('val-ebitda', formatCurrency(ov.EBITDA, true));
+
+            // Profitability metrics
+            set('prof-margin', (parseFloat(ov.ProfitMargin) * 100).toFixed(2) + '%');
+            set('prof-op-margin', (parseFloat(ov.OperatingMarginTTM) * 100).toFixed(2) + '%');
+            set('prof-gross', formatCurrency(ov.GrossProfitTTM, true));
+            set('prof-roe', (parseFloat(ov.ReturnOnEquityTTM) * 100).toFixed(2) + '%');
+            set('prof-roa', (parseFloat(ov.ReturnOnAssetsTTM) * 100).toFixed(2) + '%');
+            set('prof-rev-share', formatPrice(ov.RevenuePerShareTTM));
+            set('prof-diluted-eps', formatPrice(ov.DilutedEPSTTM));
+            set('prof-rev-growth', (parseFloat(ov.QuarterlyRevenueGrowthYOY) * 100).toFixed(2) + '%');
+            set('prof-eps-growth', (parseFloat(ov.QuarterlyEarningsGrowthYOY) * 100).toFixed(2) + '%');
+
+            // Dividends
+            set('div-yield', (parseFloat(ov.DividendYield) * 100).toFixed(2) + '%');
+            set('div-date', ov.ExDividendDate);
+
+            // 52-week range
+            const low = parseFloat(ov['52WeekLow']), high = parseFloat(ov['52WeekHigh']), cur = parseFloat(quote['05. price']);
+            // Convert values for bar calculation if needed? 
+            // The raw values are fine for ratio calculation since conversion factor cancels out.
+            // But display values need to be formatted.
+
+            // Note: formatPrice applies conversion if needed.
+            // If we use formatPrice(low), it returns a string with symbol.
+            set('low-52', formatPrice(low));
+            set('high-52', formatPrice(high));
+
+            if (high > low) document.getElementById('range-bar-52').style.left = Math.max(0, Math.min(95, ((cur - low) / (high -
+                low)) * 100)) + '%';
+
+            // Moving averages
+            const ma50 = parseFloat(ov['50DayMovingAverage']), ma200 = parseFloat(ov['200DayMovingAverage']);
+            set('ma-50-val', formatPrice(ma50)); set('ma-200-val', formatPrice(ma200));
+            renderMA('ma-50-bar', 'ma-50-text', ma50, cur);
+            renderMA('ma-200-bar', 'ma-200-text', ma200, cur);
+        }
+        function renderMA(barId, txtId, ma, cur) {
+            const diff = ((cur - ma) / ma) * 100;
+            document.getElementById(txtId).textContent = `Price is ${Math.abs(diff).toFixed(1)}% ${diff >= 0 ? 'Above' : 'Below'} MA`;
+            document.getElementById(barId).className = diff >= 0 ? 'h-1.5 rounded-full bg-green-500' : 'h-1.5 rounded-full bg-red-500';
+            document.getElementById(barId).style.width = '100%';
+        }
+
+        // Populate new sections: Ownership, Latest Quarter, Earnings Breakdown
+        function populateOwnership(ov) {
+            // Fiscal Year End
+            set('fiscal-year-end', ov.FiscalYearEnd || '-');
+
+            // Shares Float and Free Float %
+            const sharesFloat = parseFloat(ov.SharesFloat);
+            const sharesOutstanding = parseFloat(ov.SharesOutstanding);
+            set('shares-float', !isNaN(sharesFloat) ? formatLargeNum(sharesFloat, false) : '-');
+
+            // Calculate Free Float %
+            if (!isNaN(sharesFloat) && !isNaN(sharesOutstanding) && sharesOutstanding > 0) {
+                const freeFloatPct = (sharesFloat / sharesOutstanding) * 100;
+                // Sanity check: Free Float can't exceed 100% (data quality issue in source)
+                if (freeFloatPct <= 100) {
+                    set('free-float-pct', freeFloatPct.toFixed(1) + '%');
+                    document.getElementById('free-float-bar').style.width = freeFloatPct + '%';
+                } else {
+                    set('free-float-pct', 'Data Error');
+                    document.getElementById('free-float-bar').style.width = '0%';
+                }
+            }
+
+            // Insider ownership
+            const insiders = parseFloat(ov.PercentInsiders);
+            if (!isNaN(insiders)) {
+                set('pct-insiders', insiders.toFixed(1) + '%');
+                document.getElementById('insider-bar').style.width = Math.min(insiders, 100) + '%';
+            }
+
+            // Institutional ownership
+            const institutions = parseFloat(ov.PercentInstitutions);
+            if (!isNaN(institutions)) {
+                set('pct-institutions', institutions.toFixed(1) + '%');
+                document.getElementById('institution-bar').style.width = Math.min(institutions, 100) + '%';
+            }
+        }
+
+        function populateLatestQuarter(income, ov) {
+            // Set latest quarter date
+            set('latest-quarter-date', ov.LatestQuarter || '-');
+
+            // Get latest quarterly report
+            const qReports = income?.quarterlyReports;
+            if (!qReports || qReports.length === 0) return;
+
+            const latest = qReports[0];
+            set('lq-revenue', formatCurrency(latest.totalRevenue, true));
+            set('lq-gross-profit', formatCurrency(latest.grossProfit, true));
+            set('lq-operating-income', formatCurrency(latest.operatingIncome, true));
+            set('lq-net-income', formatCurrency(latest.netIncome, true));
+        }
+
+        function populateEarningsBreakdown(income) {
+            // Get latest annual report for breakdown
+            const annualReports = income?.annualReports;
+            if (!annualReports || annualReports.length === 0) return;
+
+            const latest = annualReports[0];
+
+            set('eb-revenue', formatCurrency(latest.totalRevenue, true));
+            set('eb-cost', formatCurrency(latest.costOfRevenue, true));
+            set('eb-gross', formatCurrency(latest.grossProfit, true));
+            set('eb-opex', formatCurrency(latest.operatingExpenses, true));
+            set('eb-rd', formatCurrency(latest.researchAndDevelopment, true));
+            set('eb-sga', formatCurrency(latest.sellingGeneralAndAdministrative, true));
+            set('eb-net', formatCurrency(latest.netIncome, true));
+            set('eb-tax', formatCurrency(latest.incomeTaxExpense, true));
+        }
+
+        // --- CHARTING ---
+        function prepareChartData(ts) {
+            if (!ts) return;
+            fullHistory = Object.entries(ts).map(([d, v]) => ({
+                x: new Date(d).getTime(), y: parseFloat(v['5. adjusted close'])
+            })).sort((a, b) => a.x - b.x);
+            filterChart('5Y');
+            document.querySelectorAll('.btn-range').forEach(b => {
+                b.addEventListener('click', (e) => {
+                    document.querySelectorAll('.btn-range').forEach(x => x.classList.remove('active'));
+                    e.target.classList.add('active');
+                    filterChart(e.target.dataset.range);
+                });
+            });
+        }
+        function filterChart(rng) {
+            if (!fullHistory.length) return;
+            const now = new Date(), cutoff = new Date();
+            if (rng === 'YTD') cutoff.setMonth(0, 1);
+            else if (rng === '1Y') cutoff.setFullYear(now.getFullYear() - 1);
+            else if (rng === '3Y') cutoff.setFullYear(now.getFullYear() - 3);
+            else if (rng === '5Y') cutoff.setFullYear(now.getFullYear() - 5);
+            else cutoff.setFullYear(1900);
+            renderPriceChart(fullHistory.filter(d => d.x >= cutoff.getTime()));
+        }
+        function renderPriceChart(data) {
+            if (chartInstance) chartInstance.destroy();
+            chartInstance = new ApexCharts(document.querySelector("#price-chart"), {
+                series: [{ name: 'Price', data: data }],
+                chart: {
+                    type: 'area', height: 400, toolbar: { show: false }, zoom: { enabled: false },
+                    events: { click: handleChartClick }
+                },
+                dataLabels: { enabled: false },
+                stroke: { curve: 'straight', width: 2 },
+                fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.5, opacityTo: 0.05, stops: [0, 100] } },
+                xaxis: { type: 'datetime' },
+                yaxis: { labels: { formatter: (val) => val.toFixed(0) } },
+                colors: ['#4f46e5'],
+                markers: { size: measurementMode ? 6 : 0, hover: { size: 8 } }
+            });
+            chartInstance.render();
+        }
+
+        // --- RULER TOOL (FIXED) ---
+        document.getElementById('measure-btn').addEventListener('click', toggleMeasureMode);
+
+        function toggleMeasureMode() {
+            if (measurementMode) {
+                stopMeasuring(true);
+            } else {
+                startMeasuring();
+            }
+        }
+
+        function startMeasuring() {
+            measurementMode = true;
+            measurePoints = [];
+            const btn = document.getElementById('measure-btn');
+            btn.classList.add('bg-indigo-100', 'text-indigo-700', 'border-indigo-300');
+            btn.innerHTML = `<i data-lucide="check" class="w-3 h-3"></i> Active`;
+            document.querySelector('#price-chart').classList.add('cursor-crosshair');
+            const toast = document.getElementById('measure-toast');
+            toast.classList.add('show');
+            toast.textContent = "Select Point 1";
+            document.getElementById('measure-overlay').classList.add('hidden');
+            updateChartMarkers();
+            lucide.createIcons();
+        }
+
+        function stopMeasuring(hideOverlay = false) {
+            measurementMode = false;
+            const btn = document.getElementById('measure-btn');
+            btn.classList.remove('bg-indigo-100', 'text-indigo-700', 'border-indigo-300');
+            btn.innerHTML = `<i data-lucide="ruler" class="w-3 h-3"></i> Ruler`;
+            document.querySelector('#price-chart').classList.remove('cursor-crosshair');
+            document.getElementById('measure-toast').classList.remove('show');
+            if (hideOverlay) document.getElementById('measure-overlay').classList.add('hidden');
+            updateChartMarkers();
+            lucide.createIcons();
+        }
+
+        function updateChartMarkers() {
+            if (chartInstance) {
+                chartInstance.updateOptions({
+                    markers: { size: measurementMode ? 6 : 0 },
+                    tooltip: { intersect: measurementMode, shared: !measurementMode }
+                });
+            }
+        }
+
+        function handleChartClick(event, chartContext, config) {
+            if (!measurementMode) return;
+            const dataIndex = config.dataPointIndex;
+            if (dataIndex === -1) return;
+            const point = config.config.series[0].data[dataIndex];
+            measurePoints.push(point);
+            const toast = document.getElementById('measure-toast');
+            if (measurePoints.length === 1) {
+                toast.textContent = "Select Point 2";
+            } else if (measurePoints.length === 2) {
+                calculateMeasurement();
+                measurePoints = [];
+                toast.classList.remove('show');
+                stopMeasuring(false);
+            }
+        }
+
+        function calculateMeasurement() {
+            const [p1, p2] = measurePoints.sort((a, b) => a.x - b.x);
+            const priceDiff = p2.y - p1.y;
+            const pct = (priceDiff / p1.y) * 100;
+            const days = Math.round((p2.x - p1.x) / (1000 * 3600 * 24));
+            document.getElementById('measure-price').textContent = `${priceDiff > 0 ? '+' : ''}${priceDiff.toFixed(2)}`;
+            document.getElementById('measure-price').className = `font-bold text-lg ${priceDiff >= 0 ? 'text-green-600' :
+                'text-red-600'}`;
+            document.getElementById('measure-percent').textContent = `${pct.toFixed(2)}%`;
+            document.getElementById('measure-percent').className = `font-bold text-lg ${pct >= 0 ? 'text-green-600' :
+                'text-red-600'}`;
+            document.getElementById('measure-days').textContent = `${days} Days`;
+            document.getElementById('measure-overlay').classList.remove('hidden');
+        }
+        function resetMeasure() { document.getElementById('measure-overlay').classList.add('hidden'); }
+
+        // --- ANALYST & FINANCIALS ---
+        // Track analyst chart instance
+        let analystChartInstance = null;
+
+        function renderAnalystRatings(ov) {
+            // Clear any previous chart instance
+            if (analystChartInstance) {
+                analystChartInstance.destroy();
+                analystChartInstance = null;
+            }
+            document.getElementById('analyst-chart').innerHTML = '';
+
+            document.getElementById('target-price').textContent = ov.AnalystTargetPrice || 'N/A';
+            const r = [parseInt(ov.AnalystRatingStrongBuy) || 0, parseInt(ov.AnalystRatingBuy) || 0, parseInt(ov.AnalystRatingHold) || 0, parseInt(ov.AnalystRatingSell) || 0, parseInt(ov.AnalystRatingStrongSell) || 0];
+            const tot = r.reduce((a, b) => a + b, 0);
+            if (tot === 0) {
+                document.getElementById('analyst-chart').innerHTML = '<div class="h-full flex items-center justify-center text-xs text-gray-400">No Data</div>';
+                return;
+            }
+            let v = "Neutral";
+            if ((r[0] + r[1]) > tot * 0.6) v = "Bullish";
+            if ((r[3] + r[4]) > tot * 0.6) v = "Bearish";
+            document.getElementById('analyst-verdict').textContent = v;
+            analystChartInstance = new ApexCharts(document.querySelector("#analyst-chart"), {
+                series: [{ name: 'Count', data: r }], chart: { type: 'bar', height: 160, toolbar: { show: false } },
+                plotOptions: { bar: { distributed: true, borderRadius: 4, horizontal: true } },
+                colors: ['#15803d', '#22c55e', '#eab308', '#f97316', '#ef4444'],
+                xaxis: { categories: ['Str Buy', 'Buy', 'Hold', 'Sell', 'Str Sell'], labels: { show: false } },
+                grid: { show: false }, dataLabels: { enabled: true }
+            });
+            analystChartInstance.render();
+        }
+
+        // Analyst ratings for Indian stocks (yfinance format)
+        function renderAnalystRatingsYF(analyst, ov) {
+            // Clear any previous chart instance
+            if (analystChartInstance) {
+                analystChartInstance.destroy();
+                analystChartInstance = null;
+            }
+
+            const chart = document.getElementById('analyst-chart');
+            const targetEl = document.getElementById('target-price');
+            const verdictEl = document.getElementById('analyst-verdict');
+
+            // Show target price with currency
+            const targetPrice = analyst.targetMeanPrice;
+            if (targetPrice) {
+                targetEl.textContent = formatPrice(targetPrice);
+            } else {
+                targetEl.textContent = 'N/A';
+            }
+
+            // Map recommendation to verdict
+            const rec = (analyst.recommendationKey || '').toLowerCase();
+            let verdict = 'Neutral';
+            let badgeColor = 'bg-yellow-100 text-yellow-800';
+
+            if (rec === 'buy' || rec === 'strong_buy' || rec === 'strongbuy') {
+                verdict = 'Bullish';
+                badgeColor = 'bg-green-100 text-green-800';
+            } else if (rec === 'sell' || rec === 'strong_sell' || rec === 'strongsell') {
+                verdict = 'Bearish';
+                badgeColor = 'bg-red-100 text-red-800';
+            } else if (rec === 'hold') {
+                verdict = 'Neutral';
+                badgeColor = 'bg-yellow-100 text-yellow-800';
+            }
+
+            verdictEl.textContent = verdict;
+
+            // Display recommendation details in chart area
+            const count = analyst.numberOfAnalystOpinions || 0;
+            const low = analyst.targetLowPrice ? formatPrice(analyst.targetLowPrice) : '-';
+            const high = analyst.targetHighPrice ? formatPrice(analyst.targetHighPrice) : '-';
+            const mean = analyst.targetMeanPrice ? formatPrice(analyst.targetMeanPrice) : '-';
+
+            chart.innerHTML = `
+                <div class="h-full flex flex-col justify-center space-y-3 p-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs text-gray-500">Recommendation</span>
+                        <span class="text-xs font-bold px-2 py-1 rounded ${badgeColor}">${rec.toUpperCase() || 'N/A'}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs text-gray-500">Target Range</span>
+                        <span class="text-xs font-medium">${low} - ${high}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs text-gray-500">Mean Target</span>
+                        <span class="text-xs font-bold text-indigo-600">${mean}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs text-gray-500">Analysts</span>
+                        <span class="text-xs font-medium">${count}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        // =============================================
+        // SNOWFLAKE STOCK HEALTH SCORING SYSTEM
+        // Based on SimplyWall.St methodology
+        // =============================================
+
+        let snowflakeChartInstance = null;
+
+        // Market average constants with Sector Specifics
+        const SECTOR_BENCHMARKS = {
+            'Technology': { PE: 35, ROE: 0.15, GROWTH: 0.15, PB: 6, PS: 8 },
+            'Communication Services': { PE: 30, ROE: 0.15, GROWTH: 0.12, PB: 4, PS: 6 }, // Google, Meta
+            'Consumer Defensive': { PE: 22, ROE: 0.12, GROWTH: 0.05, PB: 4, PS: 2 },
+            'Industrials': { PE: 20, ROE: 0.12, GROWTH: 0.08, PB: 3, PS: 1.5 },
+            'Financial Services': { PE: 15, ROE: 0.10, GROWTH: 0.08, PB: 1.5, PS: 3 }, // PB focus
+            'Energy': { PE: 12, ROE: 0.12, GROWTH: 0.05, PB: 1.5, PS: 2 },
+            'Healthcare': { PE: 25, ROE: 0.12, GROWTH: 0.10, PB: 4, PS: 5 },
+            'Consumer Cyclical': { PE: 20, ROE: 0.15, GROWTH: 0.10, PB: 3, PS: 2.5 },
+            'DEFAULT': { PE: 20, ROE: 0.12, GROWTH: 0.10, PB: 3, PS: 4 }
+        };
+
+        const MACRO_VARS = {
+            SAVINGS_RATE: 0.045,
+            INFLATION: 0.03,
+            DIVIDEND_YIELD_25TH: 0.01
+        };
+
+        function calculateSnowflakeScores(data) {
+            const ov = data.overview || {};
+            const quote = data.quote?.['Global Quote'] || {};
+            const income = data.income?.annualReports || [];
+            const sector = ov.Sector || 'DEFAULT';
+            const industry = ov.Industry || '';
+
+            // Get Benchmark for this sector (partial match support)
+            let bench = SECTOR_BENCHMARKS['DEFAULT'];
+
+            // 1. Try exact/partial match on SECTOR keys (Case-Insensitive)
+            for (const key in SECTOR_BENCHMARKS) {
+                if (sector.toLowerCase().includes(key.toLowerCase())) {
+                    bench = SECTOR_BENCHMARKS[key];
+                    break;
+                }
+            }
+
+            // 2. If still default, try INDUSTRY matching for specific high-growth areas
+            if (bench === SECTOR_BENCHMARKS['DEFAULT']) {
+                if (industry.includes('Internet') || industry.includes('Software') || industry.includes('Interactive Media')) {
+                    // Map Internet/Software to Technology/Comm Services levels if not caught by Sector
+                    bench = SECTOR_BENCHMARKS['Technology'];
+                }
+            }
+
+            // Parse numeric values safely
+            const parse = (v) => {
+                const n = parseFloat(v);
+                return isNaN(n) ? null : n;
+            };
+
+            // Get current price & key metrics
+            const price = parse(quote['05. price']) || (parse(ov.BookValue) * parse(ov.PriceToBookRatio));
+            const netIncome = parse(ov.NetIncome) || (income[0] ? parse(income[0].netIncome) : 0);
+            const isUnprofitable = netIncome < 0;
+            const isBank = sector.includes('Financial') || sector.includes('Bank');
+
+            // ===== VALUE SCORE (6 checks) =====
+            const valueChecks = [];
+
+            // CHECK 1: Is price < analyst target by 20%?
+            const targetPrice = parse(ov.AnalystTargetPrice);
+            if (targetPrice && price) {
+                valueChecks.push({ pass: ((targetPrice - price) / targetPrice) >= 0.20, label: 'Below Fair Value 20%' });
+            } else {
+                valueChecks.push({ pass: false, label: 'Below Fair Value 20%' }); // Fail if no data
+            }
+
+            // CHECK 2: Is price < analyst target by 40%?
+            if (targetPrice && price) {
+                valueChecks.push({ pass: ((targetPrice - price) / targetPrice) >= 0.40, label: 'Below Fair Value 40%' });
+            } else {
+                valueChecks.push({ pass: false, label: 'Below Fair Value 40%' });
+            }
+
+            // SMART VALUATION LOGIC
+            const pe = parse(ov.TrailingPE) || parse(ov.PERatio);
+            const pb = parse(ov.PriceToBookRatio);
+            const ps = parse(ov.PriceToSalesRatioTTM);
+            const peg = parse(ov.PEGRatio);
+
+            if (isBank) {
+                // BANK LOGIC: Focus on PB
+                // CHECK 3
+                valueChecks.push({
+                    pass: pb !== null && pb > 0 && pb < bench.PB,
+                    label: `PB < ${bench.PB} (Sector Avg)`
+                });
+                // CHECK 4
+                valueChecks.push({
+                    pass: pb !== null && pb > 0 && pb < (bench.PB * 0.8),
+                    label: `PB < ${(bench.PB * 0.8).toFixed(1)} (Strict)`
+                });
+            } else if (isUnprofitable) {
+                // UNPROFITABLE LOGIC: Focus on PS
+                // CHECK 3
+                valueChecks.push({
+                    pass: ps !== null && ps > 0 && ps < bench.PS,
+                    label: `PS < ${bench.PS} (Growth Proxy)`
+                });
+                // CHECK 4
+                valueChecks.push({
+                    pass: ps !== null && ps > 0 && ps < (bench.PS * 0.7),
+                    label: `PS < ${(bench.PS * 0.7).toFixed(1)} (Strict)`
+                });
+            } else {
+                // STANDARD LOGIC: Focus on PE
+                // CHECK 3
+                valueChecks.push({
+                    pass: pe !== null && pe > 0 && pe < bench.PE,
+                    label: `PE < ${bench.PE} (Sector Avg)`
+                });
+                // CHECK 4
+                valueChecks.push({
+                    pass: pe !== null && pe > 0 && pe < (bench.PE * 0.8),
+                    label: `PE < ${(bench.PE * 0.8).toFixed(1)} (Strict)`
+                });
+            }
+
+            // CHECK 5: PEG ratio < 1 (Standard) OR PS < 2 (if unprofitable)
+            if (isUnprofitable) {
+                valueChecks.push({ pass: ps !== null && ps < 2, label: 'PS < 2 (Safety)' });
+            } else {
+                valueChecks.push({ pass: peg !== null && peg > 0 && peg <= 1, label: 'PEG < 1 (Growth Value)' });
+            }
+
+            // CHECK 6: PB ratio < 3 (General Check)
+            valueChecks.push({
+                pass: pb !== null && pb > 0 && pb < 3,
+                label: 'PB < 3 (Asset Value)'
+            });
+
+            // ===== FUTURE SCORE (6 checks) =====
+            const futureChecks = [];
+
+            // Get earnings growth
+            const earningsGrowth = parse(ov.QuarterlyEarningsGrowthYOY);
+            const revenueGrowth = parse(ov.QuarterlyRevenueGrowthYOY);
+            const roe = parse(ov.ReturnOnEquityTTM);
+
+            // CHECK 1: Earnings growth > savings rate + inflation
+            const minReturn = MACRO_VARS.SAVINGS_RATE + MACRO_VARS.INFLATION;
+            futureChecks.push({
+                pass: earningsGrowth !== null && earningsGrowth > minReturn,
+                label: 'Earnings > Risk-Free'
+            });
+
+            // CHECK 2: Earnings growth > sector average
+            futureChecks.push({
+                pass: earningsGrowth !== null && earningsGrowth > bench.GROWTH,
+                label: `Earnings > ${bench.GROWTH * 100}% (Sector)`
+            });
+
+            // CHECK 3: Revenue growth > sector average
+            futureChecks.push({
+                pass: revenueGrowth !== null && revenueGrowth > bench.GROWTH,
+                label: `Revenue > ${bench.GROWTH * 100}% (Sector)`
+            });
+
+            // CHECK 4: Earnings growth > 20% (High Growth)
+            futureChecks.push({
+                pass: earningsGrowth !== null && earningsGrowth > 0.20,
+                label: 'Earnings Growth > 20%'
+            });
+
+            // CHECK 5: Revenue growth > 20% (High Growth)
+            futureChecks.push({
+                pass: revenueGrowth !== null && revenueGrowth > 0.20,
+                label: 'Revenue Growth > 20%'
+            });
+
+            // CHECK 6: ROE > 20% (current as proxy for future)
+            futureChecks.push({
+                pass: roe !== null && roe > 0.20,
+                label: 'ROE > 20%'
+            });
+
+            // ===== PAST SCORE (6 checks) =====
+            const pastChecks = [];
+
+            const eps = parse(ov.EPS) || parse(ov.DilutedEPSTTM);
+            const profitMargin = parse(ov.ProfitMargin);
+            const operatingMargin = parse(ov.OperatingMarginTTM);
+            const roa = parse(ov.ReturnOnAssetsTTM);
+
+            // CHECK 1: Positive EPS
+            pastChecks.push({
+                pass: eps !== null && eps > 0,
+                label: 'Positive EPS'
+            });
+
+            // CHECK 2: ROE > 20%
+            pastChecks.push({
+                pass: roe !== null && roe > 0.20,
+                label: 'ROE > 20%'
+            });
+
+            // CHECK 3: ROE > sector average
+            pastChecks.push({
+                pass: roe !== null && roe > bench.ROE,
+                label: `ROE > ${bench.ROE * 100}% (Sector)`
+            });
+
+            // CHECK 4: Profit margin > 10%
+            pastChecks.push({
+                pass: profitMargin !== null && profitMargin > 0.10,
+                label: 'Profit Margin > 10%'
+            });
+
+            // CHECK 5: Operating margin > 15%
+            pastChecks.push({
+                pass: operatingMargin !== null && operatingMargin > 0.15,
+                label: 'Operating Margin > 15%'
+            });
+
+            // CHECK 6: ROA > 10%
+            pastChecks.push({
+                pass: roa !== null && roa > 0.10,
+                label: 'ROA > 10%'
+            });
+
+            // ===== HEALTH SCORE (6 checks) =====
+            const healthChecks = [];
+
+            const beta = parse(ov.Beta);
+            const evToEbitda = parse(ov.EVToEBITDA);
+            const evToRev = parse(ov.EVToRevenue);
+
+            // CHECK 1: Beta < 1.5 (not too volatile)
+            healthChecks.push({
+                pass: beta !== null && beta < 1.5,
+                label: 'Beta < 1.5'
+            });
+
+            // CHECK 2: Beta > 0.5 (not too stagnant)
+            healthChecks.push({
+                pass: beta !== null && beta > 0.5,
+                label: 'Beta > 0.5'
+            });
+
+            // CHECK 3: EV/EBITDA reasonable (< 20)
+            healthChecks.push({
+                pass: evToEbitda !== null && evToEbitda > 0 && evToEbitda < 20,
+                label: 'EV/EBITDA < 20'
+            });
+
+            // CHECK 4: EV/Revenue reasonable (< 10)
+            healthChecks.push({
+                pass: evToRev !== null && evToRev > 0 && evToRev < 10,
+                label: 'EV/Revenue < 10'
+            });
+
+            // CHECK 5: Positive gross profit (from income data)
+            const latestIncome = income[0] || {};
+            const grossProfit = parse(latestIncome.grossProfit);
+            healthChecks.push({
+                pass: grossProfit !== null && grossProfit > 0,
+                label: 'Positive Gross Profit'
+            });
+
+            // CHECK 6: Operating income positive
+            const operatingIncome = parse(latestIncome.operatingIncome);
+            healthChecks.push({
+                pass: operatingIncome !== null && operatingIncome > 0,
+                label: 'Positive Operating Income'
+            });
+
+            // ===== DIVIDEND SCORE (6 checks) =====
+            const dividendChecks = [];
+
+            const dividendYield = parse(ov.DividendYield);
+            const dividendPS = parse(ov.DividendPerShare);
+
+            // CHECK 1: Dividend yield > 25th percentile of market
+            dividendChecks.push({
+                pass: dividendYield !== null && dividendYield > MACRO_VARS.DIVIDEND_YIELD_25TH,
+                label: 'Yield > 25th Percentile'
+            });
+
+            // CHECK 2: Dividend yield > 75th percentile of market
+            dividendChecks.push({
+                pass: dividendYield !== null && dividendYield > MACRO_VARS.DIVIDEND_YIELD_75TH,
+                label: 'Yield > 75th Percentile'
+            });
+
+            // CHECK 3: Pays a dividend at all
+            dividendChecks.push({
+                pass: dividendPS !== null && dividendPS > 0,
+                label: 'Pays Dividend'
+            });
+
+            // CHECK 4: Payout ratio < 90% (sustainable)
+            const payoutRatio = (dividendPS && eps && eps > 0) ? (dividendPS / eps) : null;
+            dividendChecks.push({
+                pass: payoutRatio !== null && payoutRatio > 0 && payoutRatio < 0.90,
+                label: 'Payout < 90%'
+            });
+
+            // CHECK 5: Payout ratio > 0 but < 70% (ideal range)
+            dividendChecks.push({
+                pass: payoutRatio !== null && payoutRatio > 0 && payoutRatio < 0.70,
+                label: 'Payout 0-70%'
+            });
+
+            // CHECK 6: Has dividend yield (not just N/A)
+            dividendChecks.push({
+                pass: dividendYield !== null && dividendYield > 0,
+                label: 'Dividend Active'
+            });
+
+            // Calculate scores
+            const valueScore = valueChecks.filter(c => c.pass).length;
+            const futureScore = futureChecks.filter(c => c.pass).length;
+            const pastScore = pastChecks.filter(c => c.pass).length;
+            const healthScore = healthChecks.filter(c => c.pass).length;
+            const dividendScore = dividendChecks.filter(c => c.pass).length;
+
+            return {
+                value: { score: valueScore, checks: valueChecks },
+                future: { score: futureScore, checks: futureChecks },
+                past: { score: pastScore, checks: pastChecks },
+                health: { score: healthScore, checks: healthChecks },
+                dividend: { score: dividendScore, checks: dividendChecks },
+                total: valueScore + futureScore + pastScore + healthScore + dividendScore
+            };
+        }
+
+        function renderSnowflakeChart(scores) {
+            // Clear previous chart
+            if (snowflakeChartInstance) {
+                snowflakeChartInstance.destroy();
+                snowflakeChartInstance = null;
+            }
+            document.getElementById('snowflake-chart').innerHTML = '';
+
+            // Update score displays
+            document.getElementById('score-value').textContent = scores.value.score;
+            document.getElementById('score-future').textContent = scores.future.score;
+            document.getElementById('score-past').textContent = scores.past.score;
+            document.getElementById('score-health').textContent = scores.health.score;
+            document.getElementById('score-dividend').textContent = scores.dividend.score;
+            document.getElementById('snowflake-total').textContent = `${scores.total}/30`;
+
+            // Render ALL checks with pass/fail status
+            const renderAllChecks = (elementId, checks) => {
+                const el = document.getElementById(elementId);
+                el.innerHTML = checks.map(c =>
+                    `<div class="flex items-start gap-1 text-xs">
+                        <span class="${c.pass ? 'text-green-500' : 'text-red-500'} flex-shrink-0">${c.pass ? '✓' : '✗'}</span>
+                        <span class="${c.pass ? 'text-gray-600' : 'text-gray-500'}">${c.label}</span>
+                    </div>`
+                ).join('');
+            };
+
+            renderAllChecks('score-value-details', scores.value.checks);
+            renderAllChecks('score-future-details', scores.future.checks);
+            renderAllChecks('score-past-details', scores.past.checks);
+            renderAllChecks('score-health-details', scores.health.checks);
+            renderAllChecks('score-dividend-details', scores.dividend.checks);
+
+            // Create radar chart
+            snowflakeChartInstance = new ApexCharts(document.querySelector("#snowflake-chart"), {
+                series: [{
+                    name: 'Score',
+                    data: [
+                        scores.value.score,
+                        scores.future.score,
+                        scores.past.score,
+                        scores.health.score,
+                        scores.dividend.score
+                    ]
+                }],
+                chart: {
+                    type: 'radar',
+                    height: 250,
+                    toolbar: { show: false },
+                    dropShadow: { enabled: true, blur: 1, left: 1, top: 1 }
+                },
+                colors: ['#6366f1'],
+                fill: {
+                    opacity: 0.4,
+                    colors: ['#fbbf24']
+                },
+                stroke: {
+                    width: 2,
+                    colors: ['#fbbf24']
+                },
+                markers: {
+                    size: 4,
+                    colors: ['#fbbf24'],
+                    strokeColors: '#fff',
+                    strokeWidth: 2
+                },
+                xaxis: {
+                    categories: ['Value', 'Future', 'Past', 'Health', 'Dividend'],
+                    labels: {
+                        style: { fontSize: '11px', fontWeight: 600, colors: ['#6366f1', '#06b6d4', '#f59e0b', '#10b981', '#f43f5e'] }
+                    }
+                },
+                yaxis: {
+                    show: false,
+                    max: 6,
+                    tickAmount: 3
+                },
+                plotOptions: {
+                    radar: {
+                        polygons: {
+                            strokeColors: '#e5e7eb',
+                            connectorColors: '#e5e7eb',
+                            fill: { colors: ['#f9fafb', '#fff'] }
+                        }
+                    }
+                },
+                tooltip: {
+                    y: { formatter: (val) => `${val}/6` }
+                }
+            });
+            snowflakeChartInstance.render();
+        }
+
+        // =============================================
+        // END OF SNOWFLAKE SCORING SYSTEM
+        // =============================================
+
+        // =============================================
+        // VOLATILITY ANALYSIS (NEW)
+        // =============================================
+        function populateVolatility(ov) {
+            const beta = parseFloat(ov.Beta) || 0;
+            const high52 = parseFloat(ov['52WeekHigh']) || 0;
+            const low52 = parseFloat(ov['52WeekLow']) || 0;
+
+            // 1. Beta Gauge
+            const betaValEl = document.getElementById('vol-beta-val');
+            const betaMarkerEl = document.getElementById('vol-beta-marker');
+            const betaTextEl = document.getElementById('vol-beta-text');
+
+            betaValEl.textContent = beta.toFixed(2);
+
+            // Position marker (0.5 to 1.5 range mapping to 0-100%)
+            // We map 0-2 range to 0-100% for visual balance
+            let pos = (beta / 2) * 100;
+            pos = Math.max(0, Math.min(100, pos)); // Clamp
+            betaMarkerEl.style.left = `${pos}%`;
+
+            // Text logic
+            if (beta < 0.8) {
+                betaTextEl.textContent = "Low Volatility (Defensive)";
+                betaTextEl.className = "text-[10px] text-green-600 mt-1 text-right font-bold";
+            } else if (beta > 1.2) {
+                betaTextEl.textContent = "High Volatility (Aggressive)";
+                betaTextEl.className = "text-[10px] text-red-600 mt-1 text-right font-bold";
+            } else {
+                betaTextEl.textContent = "Market Correlation (Average)";
+                betaTextEl.className = "text-[10px] text-yellow-600 mt-1 text-right font-bold";
+            }
+
+            // 2. Volatility Spread
+            const spreadValEl = document.getElementById('vol-spread-val');
+            const spreadBarEl = document.getElementById('vol-spread-bar');
+
+            if (high52 > 0 && low52 > 0) {
+                const spread = ((high52 - low52) / low52) * 100;
+                spreadValEl.textContent = `${spread.toFixed(1)}%`;
+
+                // Visual capping at 100% spread for bar width
+                const barWidth = Math.min(100, spread);
+                spreadBarEl.style.width = `${barWidth}%`;
+            } else {
+                spreadValEl.textContent = "-";
+                spreadBarEl.style.width = "0%";
+            }
+        }
+
+        // =============================================
+        // VALUATION GAUGE AND FAIR VALUE BAR
+        // =============================================
+
+        let valuationGaugeInstance = null;
+
+        function renderValuationGauge(data) {
+            const ov = data.overview || {};
+            const quote = data.quote?.['Global Quote'] || {};
+
+            const pe = parseFloat(ov.TrailingPE) || parseFloat(ov.PERatio);
+            const forwardPE = parseFloat(ov.ForwardPE);
+            const peg = parseFloat(ov.PEGRatio);
+
+            // Calculate Fair PE using SECTOR BENCHMARKS (Consistent with Snowflake)
+            const sector = ov.Sector || 'DEFAULT';
+            const industry = ov.Industry || '';
+            let bench = SECTOR_BENCHMARKS['DEFAULT'];
+
+            // 1. Match Sector
+            for (const key in SECTOR_BENCHMARKS) {
+                if (sector.toLowerCase().includes(key.toLowerCase())) {
+                    bench = SECTOR_BENCHMARKS[key];
+                    break;
+                }
+            }
+            // 2. Match Industry (Tech/Internet adjustment)
+            if (bench === SECTOR_BENCHMARKS['DEFAULT']) {
+                if (industry.includes('Internet') || industry.includes('Software') || industry.includes('Interactive Media')) {
+                    bench = SECTOR_BENCHMARKS['Technology'];
+                }
+            }
+
+            // Use Sector PE as the primary "Fair" baseline
+            const earningsGrowth = parseFloat(ov.QuarterlyEarningsGrowthYOY) || 0.10;
+            const pegFairPE = earningsGrowth * 100;
+
+            // Fair PE is the HIGHER of Sector Avg or Growth-based (PEG=1)
+            // This ensures high-growth stocks like Adobe (PE 20, Fwd 13) get a Fair PE of ~30-35 (Sector)
+            const fairPE = Math.max(bench.PE, pegFairPE);
+
+            // Clear previous chart
+            if (valuationGaugeInstance) {
+                valuationGaugeInstance.destroy();
+                valuationGaugeInstance = null;
+            }
+            document.getElementById('valuation-gauge').innerHTML = '';
+
+            if (!pe || pe <= 0) {
+                document.getElementById('valuation-gauge').innerHTML =
+                    '<div class="flex items-center justify-center h-full text-gray-500 text-sm">No PE data available</div>';
+                return;
+            }
+
+            // Calculate percentage for gauge (cap at 100% for display)
+            // If PE > Fair PE * 2, it's very overvalued (100%)
+            // If PE < Fair PE * 0.5, it's very undervalued (0%)
+            const ratio = pe / fairPE;
+            let gaugeValue = Math.min(100, Math.max(0, (ratio / 2) * 100));
+
+            // Determine color based on valuation
+            let color = '#10b981'; // Green - undervalued
+            let status = 'Undervalued';
+            if (ratio > 1.5) {
+                color = '#ef4444'; // Red - overvalued
+                status = 'Overvalued';
+            } else if (ratio > 0.8) {
+                color = '#f59e0b'; // Yellow - fair
+                status = 'Fair Value';
+            }
+
+            valuationGaugeInstance = new ApexCharts(document.querySelector("#valuation-gauge"), {
+                series: [gaugeValue],
+                chart: {
+                    type: 'radialBar',
+                    height: 180,
+                    offsetY: -10,
+                    sparkline: { enabled: true }
+                },
+                plotOptions: {
+                    radialBar: {
+                        startAngle: -135,
+                        endAngle: 135,
+                        hollow: {
+                            size: '55%',
+                            background: 'transparent'
+                        },
+                        track: {
+                            background: '#e5e7eb',
+                            strokeWidth: '100%',
+                            margin: 5,
+                            dropShadow: { enabled: true, top: 2, left: 0, color: '#999', opacity: 0.2, blur: 2 }
+                        },
+                        dataLabels: {
+                            name: {
+                                show: true,
+                                fontSize: '12px',
+                                fontWeight: 600,
+                                color: '#6b7280',
+                                offsetY: -10
+                            },
+                            value: {
+                                show: true,
+                                fontSize: '24px',
+                                fontWeight: 700,
+                                color: color,
+                                offsetY: 5,
+                                formatter: () => pe.toFixed(1) + 'x'
+                            }
+                        }
+                    }
+                },
+                fill: {
+                    type: 'gradient',
+                    gradient: {
+                        shade: 'dark',
+                        type: 'horizontal',
+                        shadeIntensity: 0.5,
+                        gradientToColors: [color],
+                        inverseColors: false,
+                        opacityFrom: 1,
+                        opacityTo: 1,
+                        stops: [0, 100]
+                    }
+                },
+                colors: [color],
+                labels: [`Fair PE: ${fairPE.toFixed(1)}x`],
+                stroke: { lineCap: 'round' },
+                annotations: {
+                    position: 'front'
+                }
+            });
+            valuationGaugeInstance.render();
+
+            // Add status label below
+            const gaugeEl = document.getElementById('valuation-gauge');
+            const statusDiv = document.createElement('div');
+            statusDiv.className = `text-center text-sm font-bold mt-2`;
+            statusDiv.style.color = color;
+            statusDiv.textContent = status;
+            gaugeEl.appendChild(statusDiv);
+        }
+
+        function renderFairValueBar(data) {
+            const ov = data.overview || {};
+            const quote = data.quote?.['Global Quote'] || {};
+
+            const currentPrice = parseFloat(quote['05. price']) || parseFloat(ov.BookValue) * parseFloat(ov.PriceToBookRatio);
+            const targetPrice = parseFloat(ov.AnalystTargetPrice);
+
+            // Currency Handling
+            const isIndian = (data.market === 'IN');
+            const symbol = (isIndian && currencyMode === 'native') ? '₹' : '$';
+
+            // Apply conversions if needed (though data might be raw, render logic handles display)
+            // Note: If data is raw INR, and we are in USD mode...
+            // currentPrice comes from quote['05. price'] which logic elsewhere handles?
+            // Actually, locally we need to handle conversion if data is raw and we are in USD mode.
+            // But quote data is usually raw.
+            // Let's rely on formatPrice if we used it, but here we construct strings manually.
+            // Let's implement conversion:
+
+            let displayCurrent = currentPrice;
+            let displayTarget = targetPrice;
+
+            if (isIndian && currencyMode === 'usd') {
+                displayCurrent = displayCurrent / usdInrRate;
+                displayTarget = displayTarget / usdInrRate;
+            }
+
+            // Update text displays
+            document.getElementById('fv-current-price').textContent = displayCurrent ? `${symbol}${displayCurrent.toFixed(2)}` : 'N/A';
+            document.getElementById('fv-target-price').textContent = displayTarget ? `${symbol}${displayTarget.toFixed(2)}` : 'N/A';
+
+            if (!currentPrice || !targetPrice) {
+                document.getElementById('fv-upside').textContent = 'N/A';
+                document.getElementById('fv-upside').className = 'text-2xl font-bold text-gray-500';
+                return;
+            }
+
+            // Calculate upside/downside
+            const upside = ((targetPrice - currentPrice) / currentPrice) * 100;
+
+            // Update upside display
+            const upsideEl = document.getElementById('fv-upside');
+            const isPositive = upside >= 0;
+            upsideEl.textContent = `${isPositive ? '+' : ''}${upside.toFixed(1)}%`;
+            upsideEl.className = `text-2xl font-bold ${isPositive ? 'text-emerald-600' : 'text-red-600'}`;
+
+            // Calculate bar position
+            // Bar shows: left = overvalued (price > target), right = undervalued (price < target)
+            // Center (50%) = price equals target
+            // Price at 150% of target = 0% (far left)
+            // Price at 50% of target = 100% (far right)
+            const ratio = currentPrice / targetPrice;
+            const barPosition = Math.min(100, Math.max(0, ((1.5 - ratio) / 1) * 100));
+
+            // Update bar fill
+            const barFill = document.getElementById('fv-bar-fill');
+            barFill.style.width = `${barPosition}%`;
+
+            // Color based on valuation
+            if (upside > 20) {
+                barFill.className = 'absolute h-full rounded-full transition-all duration-500 bg-gradient-to-r from-yellow-400 to-emerald-500';
+            } else if (upside > 0) {
+                barFill.className = 'absolute h-full rounded-full transition-all duration-500 bg-gradient-to-r from-yellow-400 to-yellow-500';
+            } else {
+                barFill.className = 'absolute h-full rounded-full transition-all duration-500 bg-gradient-to-r from-red-500 to-yellow-400';
+            }
+
+            // Position the marker at current price position
+            const markerPosition = Math.min(95, Math.max(5, barPosition));
+            document.getElementById('fv-bar-marker').style.left = `${markerPosition}%`;
+        }
+
+        // =============================================
+        // END OF VALUATION GAUGE AND FAIR VALUE BAR
+        // =============================================
+
+        // Listen for expand button click
+        document.getElementById('expand-financials-btn').addEventListener('click', () => {
+            isFinancialsExpanded = !isFinancialsExpanded;
+            renderFinancialTable(); // Re-render with current reports
+        });
+
+        function renderFinancialTable(reports) {
+            if (reports) currentFinancialReports = reports; // Update cache if new data provided
+            const data = currentFinancialReports;
+
+            const tbody = document.getElementById('financial-table-body');
+            tbody.innerHTML = '';
+
+            if (!data || data.length === 0) return;
+
+            // Limit based on expanded state
+            const limit = isFinancialsExpanded ? data.length : Math.min(data.length, 5);
+
+            // Update Button Text
+            const btn = document.getElementById('expand-financials-btn');
+            if (data.length <= 5) { btn.classList.add('hidden'); } else {
+                btn.classList.remove('hidden');
+                btn.innerHTML = isFinancialsExpanded ? `<i data-lucide="chevron-up" class="w-4 h-4"></i> Show Less`
+                    : `<i data-lucide="chevron-down" class="w-4 h-4"></i> Show Full History (${data.length} Years)`;
+                lucide.createIcons(); // Refresh icons inside button
+            }
+
+            for (let i = 0; i < limit; i++) {
+                const r = data[i];
+                const prev = data[i + 1]; // Get previous year (next in descending list)
+
+                // Growth Calculation Helper
+                const calcGrowth = (current, previous) => {
+                    if (!previous || parseFloat(previous) === 0) return null;
+                    return ((parseFloat(current) - parseFloat(previous)) / Math.abs(parseFloat(previous))) * 100;
+                };
+
+                const revGrowth = calcGrowth(r.totalRevenue, prev ? prev.totalRevenue : null);
+                const niGrowth = calcGrowth(r.netIncome, prev ? prev.netIncome : null);
+
+                // Formatting Helper
+                const formatGrowth = (val) => {
+                    if (val === null) return '<span class="text-gray-400 text-xs">-</span>';
+                    const color = val >= 0 ? 'text-green-600' : 'text-red-600';
+                    return `<span class="${color} font-bold text-xs">${val > 0 ? '+' : ''}${val.toFixed(2)}%</span>`;
+                };
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-gray-50 transition border-b border-gray-100 last:border-0";
+                tr.innerHTML = `
+                    <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">${r.fiscalDateEnding}</td>
+                    <td class="px-6 py-4 text-gray-700">${formatCurrency(r.totalRevenue)}</td>
+                    <td class="px-6 py-4">${formatGrowth(revGrowth)}</td>
+                    <td class="px-6 py-4 text-gray-600">${formatCurrency(r.grossProfit)}</td>
+                    <td class="px-6 py-4 text-gray-600">${formatCurrency(r.operatingIncome)}</td>
+                    <td class="px-6 py-4 font-bold text-gray-900">${formatCurrency(r.netIncome)}</td>
+                    <td class="px-6 py-4">${formatGrowth(niGrowth)}</td>
+                    <td class="px-6 py-4 text-gray-600">${formatCurrency(r.ebitda)}</td>
+                `;
+                tbody.appendChild(tr);
+            }
+        }
+
+        // --- BALANCE SHEET CHART ---
+        let balanceSheetChartInstance = null;
+
+        function renderBalanceSheetChart(balanceSheet) {
+            const chartDiv = document.getElementById('balance-sheet-chart');
+            // Check for valid data
+            if (!balanceSheet || !balanceSheet.annualReports || balanceSheet.annualReports.length === 0) {
+                chartDiv.innerHTML = '<div class="flex items-center justify-center h-64 bg-gray-50 rounded-lg text-gray-400">No balance sheet data available</div>';
+                return;
+            }
+
+            // Process data (sort chronological)
+            const reports = [...balanceSheet.annualReports].reverse();
+
+            // Extract series
+            const years = reports.map(r => r.fiscalDateEnding.split('-')[0]); // Just the year
+            const assets = reports.map(r => parseFloat(r.totalAssets) || 0);
+            const liabilities = reports.map(r => parseFloat(r.totalLiabilities) || 0);
+
+            // Handle Currency Conversion if needed
+            const isIndian = (currentStockData && currentStockData.market === 'IN');
+            if (isIndian && currencyMode === 'usd') {
+                for (let i = 0; i < assets.length; i++) {
+                    assets[i] = assets[i] / usdInrRate;
+                    liabilities[i] = liabilities[i] / usdInrRate;
+                }
+            }
+
+            // Clear placeholder/old chart
+            chartDiv.innerHTML = '';
+            if (balanceSheetChartInstance) {
+                balanceSheetChartInstance.destroy();
+                balanceSheetChartInstance = null;
+            }
+
+            // Format numbers for tooltip
+            const symbol = (isIndian && currencyMode === 'native') ? '₹' : '$';
+            const fmt = (val) => {
+                if (Math.abs(val) > 1e9) return symbol + (val / 1e9).toFixed(2) + 'B';
+                if (Math.abs(val) > 1e6) return symbol + (val / 1e6).toFixed(2) + 'M';
+                return symbol + val.toFixed(2);
+            };
+
+            const options = {
+                series: [
+                    { name: 'Total Assets', data: assets },
+                    { name: 'Total Liabilities', data: liabilities }
+                ],
+                chart: {
+                    type: 'bar',
+                    height: 350,
+                    toolbar: { show: false }
+                },
+                plotOptions: {
+                    bar: {
+                        horizontal: false,
+                        columnWidth: '55%',
+                        endingShape: 'rounded'
+                    },
+                },
+                dataLabels: { enabled: false },
+                stroke: { show: true, width: 2, colors: ['transparent'] },
+                xaxis: { categories: years },
+                yaxis: {
+                    title: { text: isIndian && currencyMode === 'native' ? 'Amount (₹)' : 'Amount ($)' }
+                },
+                fill: { opacity: 1 },
+                colors: ['#10b981', '#ef4444'], // Green for Assets, Red for Liabilities
+                tooltip: {
+                    y: { formatter: function (val) { return fmt(val) } }
+                }
+            };
+
+            balanceSheetChartInstance = new ApexCharts(document.querySelector("#balance-sheet-chart"), options);
+            balanceSheetChartInstance.render();
+        }
+
+        // --- CALCULATOR ENGINE ---
+        document.getElementById('calc-mode-toggle').addEventListener('change', (e) => {
+            calcMode = e.target.checked ? 'complex' : 'simple';
+            initCalculatorState();
+        });
+
+        // Toggle Listener for Return Mode (CAGR vs Abs)
+        document.getElementById('return-mode-toggle').addEventListener('change', (e) => {
+            returnMode = e.target.checked ? 'absolute' : 'cagr';
+            calculateProjections(); // Re-calculate to update display
+        });
+
+        function populateCalculator(data) {
+            const ov = data.overview;
+            let shares = parseFloat(ov.SharesOutstanding) / 1000000;
+            let price = parseFloat(data.quote['Global Quote']['05. price']);
+            let rev = parseFloat(ov.RevenueTTM) / 1000000;
+            let pat = parseFloat(ov.EPS) * shares;
+
+            // Apply conversion if in USD mode for Indian stocks
+            // Check if stock is IN (using currentStockData if available or data.market)
+            const isIndian = (data.market === 'IN') || (currentStockData && currentStockData.market === 'IN');
+
+            if (isIndian && currencyMode === 'usd') {
+                price = price / usdInrRate;
+                rev = rev / usdInrRate;
+                pat = pat / usdInrRate;
+            }
+
+            document.getElementById('ttmRevenue').value = rev.toFixed(2);
+            document.getElementById('ttmPat').value = pat.toFixed(2);
+            document.getElementById('currentPrice').value = price.toFixed(2);
+            document.getElementById('totalShares').value = shares.toFixed(2);
+            document.getElementById('currentPE').value = ov.PERatio;
+            initCalculatorState();
+        }
+
+        function initCalculatorState() {
+            const years = parseInt(document.getElementById('exitYear').value) || 1;
+            const div = document.getElementById('projection-inputs');
+
+            // Resize array while preserving existing data
+            if (complexData.length < years + 1) {
+                // Grow
+                for (let i = complexData.length; i <= years; i++) {
+                    complexData.push({
+                        rev: { bull: 15, base: 10, bear: 5 },
+                        pat: { bull: 15, base: 10, bear: 5 },
+                        pe: { bull: 30, base: 25, bear: 20 }
+                    });
+                }
+            } else if (complexData.length > years + 1) {
+                // Shrink (Optional, but good for consistency)
+                complexData.length = years + 1;
+            }
+
+            if (calcMode === 'simple') {
+                document.getElementById('year-switcher').classList.add('hidden');
+
+                // Preserve existing values if inputs exist
+                const existingRev = { bull: 15, base: 10, bear: 5 };
+                const existingPat = { bull: 15, base: 10, bear: 5 };
+                const existingPe = { bull: 30, base: 25, bear: 20 };
+
+                const revBull = document.getElementById('revBull');
+                if (revBull) {
+                    existingRev.bull = parseFloat(revBull.value) || 15;
+                    existingRev.base = parseFloat(document.getElementById('revBase').value) || 10;
+                    existingRev.bear = parseFloat(document.getElementById('revBear').value) || 5;
+                    existingPat.bull = parseFloat(document.getElementById('patBull').value) || 15;
+                    existingPat.base = parseFloat(document.getElementById('patBase').value) || 10;
+                    existingPat.bear = parseFloat(document.getElementById('patBear').value) || 5;
+                    existingPe.bull = parseFloat(document.getElementById('peBull').value) || 30;
+                    existingPe.base = parseFloat(document.getElementById('peBase').value) || 25;
+                    existingPe.bear = parseFloat(document.getElementById('peBear').value) || 20;
+                }
+
+                div.innerHTML = `
+                    <p class="text-[10px] text-gray-500 mb-2 font-medium uppercase">CAGR Growth Rates (%)</p>
+                    ${createInputGroup('Revenue Growth', 'rev', existingRev.bull, existingRev.base, existingRev.bear)}
+                    ${createInputGroup('PAT Growth', 'pat', existingPat.bull, existingPat.base, existingPat.bear)}
+                    ${createInputGroup('Target PE', 'pe', existingPe.bull, existingPe.base, existingPe.bear)}
+                `;
+            } else {
+                renderComplexInputs(); // Delegate to complex renderer
+            }
+
+            // Listeners removed to prevent auto-refresh while typing. Use Run Simulation button.
+            // div.querySelectorAll('input').forEach(inp => inp.addEventListener('input', calculateProjections));
+            calculateProjections();
+        }
+
+        function createInputGroup(label, id, v1, v2, v3) {
+            return `<div class="mb-3"><label
+                        class="text-xs font-bold text-gray-500 uppercase mb-1 block">${label}</label>
+                    <div class="grid grid-cols-3 gap-2"><input type="number" id="${id}Bull" value="${v1}" min="-9999"
+                            max="9999" class="input-field text-center text-green-600 bg-green-50 border-green-200"
+                            placeholder="Bull"><input type="number" id="${id}Base" value="${v2}" min="-9999" max="9999"
+                            class="input-field text-center text-yellow-600 bg-yellow-50 border-yellow-200"
+                            placeholder="Base"><input type="number" id="${id}Bear" value="${v3}" min="-9999" max="9999"
+                            class="input-field text-center text-red-600 bg-red-50 border-red-200" placeholder="Bear">
+                    </div>
+                </div>`;
+        }
+
+        function renderComplexInputs() {
+            const div = document.getElementById('projection-inputs');
+            document.getElementById('year-switcher').classList.remove('hidden');
+            document.getElementById('current-year-display').textContent = `Year ${currentEditYear}`;
+
+            const yData = complexData[currentEditYear]; // 1-based index matches array
+
+            div.innerHTML = `
+                 <div class="bg-indigo-50 rounded-lg p-3 border border-indigo-100 mb-2">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-xs font-bold text-indigo-800 uppercase">Year ${currentEditYear} Assumptions</span>
+                    </div>
+                    
+                    <!-- Header -->
+                     <div class="grid grid-cols-4 gap-2 mb-2 items-center">
+                        <div class="text-[10px] font-bold text-gray-400">SCENARIO</div>
+                        <div class="text-[10px] font-bold text-gray-600 text-center">REV %</div>
+                        <div class="text-[10px] font-bold text-gray-600 text-center">PAT %</div>
+                        <div class="text-[10px] font-bold text-gray-600 text-center">PE</div>
+                    </div>
+
+                    <!-- Bull -->
+                     <div class="grid grid-cols-4 gap-2 mb-2 items-center">
+                        <div class="text-xs font-bold text-green-600">Bull</div>
+                        <input type="number" data-scen="bull" data-metric="rev" class="complex-inp w-full border rounded px-1 py-1 text-xs text-center text-green-600 bg-green-50 border-green-200" value="${yData.rev.bull}">
+                        <input type="number" data-scen="bull" data-metric="pat" class="complex-inp w-full border rounded px-1 py-1 text-xs text-center text-green-600 bg-green-50 border-green-200" value="${yData.pat.bull}">
+                        <input type="number" data-scen="bull" data-metric="pe" class="complex-inp w-full border rounded px-1 py-1 text-xs text-center text-green-600 bg-green-50 border-green-200" value="${yData.pe.bull}">
+                    </div>
+                     <!-- Base -->
+                     <div class="grid grid-cols-4 gap-2 mb-2 items-center">
+                        <div class="text-xs font-bold text-amber-600">Base</div>
+                        <input type="number" data-scen="base" data-metric="rev" class="complex-inp w-full border rounded px-1 py-1 text-xs text-center text-amber-600 bg-amber-50 border-amber-200" value="${yData.rev.base}">
+                        <input type="number" data-scen="base" data-metric="pat" class="complex-inp w-full border rounded px-1 py-1 text-xs text-center text-amber-600 bg-amber-50 border-amber-200" value="${yData.pat.base}">
+                        <input type="number" data-scen="base" data-metric="pe" class="complex-inp w-full border rounded px-1 py-1 text-xs text-center text-amber-600 bg-amber-50 border-amber-200" value="${yData.pe.base}">
+                    </div>
+                     <!-- Bear -->
+                     <div class="grid grid-cols-4 gap-2 mb-2 items-center">
+                        <div class="text-xs font-bold text-red-600">Bear</div>
+                        <input type="number" data-scen="bear" data-metric="rev" class="complex-inp w-full border rounded px-1 py-1 text-xs text-center text-red-600 bg-red-50 border-red-200" value="${yData.rev.bear}">
+                        <input type="number" data-scen="bear" data-metric="pat" class="complex-inp w-full border rounded px-1 py-1 text-xs text-center text-red-600 bg-red-50 border-red-200" value="${yData.pat.bear}">
+                        <input type="number" data-scen="bear" data-metric="pe" class="complex-inp w-full border rounded px-1 py-1 text-xs text-center text-red-600 bg-red-50 border-red-200" value="${yData.pe.bear}">
+                    </div>
+                </div>
+            `;
+
+            // Attach listeners specifically for complex inputs
+            // Listeners removed to prevent auto-refresh while typing.
+            div.querySelectorAll('.complex-inp').forEach(inp => {
+                inp.addEventListener('input', (e) => {
+                    const metric = e.target.dataset.metric;
+                    const scen = e.target.dataset.scen; // bull/base/bear
+                    const val = parseFloat(e.target.value) || 0;
+                    complexData[currentEditYear][metric][scen] = val;
+                    // calculateProjections(); // Only update data, don't re-calculate yet
+                });
+            });
+        }
+
+        function changeYear(delta) {
+            const max = parseInt(document.getElementById('exitYear').value);
+            const next = currentEditYear + delta;
+            if (next >= 1 && next <= max) { currentEditYear = next; renderComplexInputs(); }
+        } function
+            calculateReRate() { calculateProjections(true); } function calculateProjections(forceYearZero = false) {
+                const revStart = parseFloat(document.getElementById('ttmRevenue').value); const
+                    patStart = parseFloat(document.getElementById('ttmPat').value); const
+                        shares = parseFloat(document.getElementById('totalShares').value); const
+                            curPrice = parseFloat(document.getElementById('currentPrice').value); const years = forceYearZero ? 0 :
+                                parseInt(document.getElementById('exitYear').value); const scenarios = ['Bull', 'Base', 'Bear'];
+                const colors = { Bull: 'green', Base: 'yellow', Bear: 'red' }; let html = '';
+
+                // Determine currency symbol - check if current stock is Indian
+                const isIndian = (currentStockData && currentStockData.market === 'IN');
+                const currencySymbol = (isIndian && currencyMode === 'native') ? '₹' : '$';
+
+                scenarios.forEach(scen => {
+                    const sKey = scen.toLowerCase();
+                    let fPat = patStart, fRev = revStart, finalPe = 0;
+                    let trajectory = [curPrice];
+
+                    if (years === 0) {
+                        if (calcMode === 'simple') {
+                            finalPe = parseFloat(document.getElementById(`pe${scen}`).value);
+                        } else {
+                            finalPe = complexData[1].pe[sKey];
+                        }
+                        trajectory.push((fPat * finalPe) / shares);
+                    } else {
+                        for (let i = 1; i <= years; i++) {
+                            let pGrowth, rGrowth, tPe;
+                            if (calcMode === 'simple') {
+                                pGrowth = parseFloat(document.getElementById(`pat${scen}`).value) / 100;
+                                rGrowth = parseFloat(document.getElementById(`rev${scen}`).value) / 100;
+                                tPe = parseFloat(document.getElementById(`pe${scen}`).value);
+                            } else {
+                                pGrowth = complexData[i].pat[sKey] / 100;
+                                rGrowth = complexData[i].rev[sKey] / 100;
+                                tPe = complexData[i].pe[sKey];
+                            }
+
+                            // Revenue growth (always normal - revenue is typically positive)
+                            fRev *= (1 + rGrowth);
+
+                            // PAT growth - handle negative values (loss-making companies)
+                            // For losses: "growth" means improvement (reducing loss toward profit)
+                            // e.g., -100M with 50% growth = -100M + (100M * 0.5) = -50M
+                            // e.g., -100M with 150% growth = -100M + (100M * 1.5) = +50M (swings to profit)
+                            if (fPat < 0) {
+                                // Loss-making: growth adds to PAT (reduces loss)
+                                fPat = fPat + (Math.abs(fPat) * pGrowth);
+                            } else {
+                                // Profitable: normal compound growth
+                                fPat *= (1 + pGrowth);
+                            }
+
+                            finalPe = tPe;
+                            trajectory.push((fPat * tPe) / shares);
+                        }
+                    }
+
+                    const fMcap = fPat * finalPe;
+                    const fPrice = trajectory[trajectory.length - 1];
+                    const fEps = fPat / shares;
+
+                    // --- RETURN LOGIC ---
+                    const totalReturn = ((fPrice - curPrice) / curPrice) * 100;
+                    let displayReturnVal = 0;
+                    let displayReturnSuffix = "";
+
+                    if (returnMode === 'absolute') {
+                        // Absolute Mode: Always total return
+                        displayReturnVal = totalReturn;
+                        displayReturnSuffix = totalReturn >= 0 ? "Upside" : "Downside";
+                    } else {
+                        // CAGR Mode
+                        if (totalReturn < 0) {
+                            // User Request: Losses should always be absolute
+                            displayReturnVal = totalReturn;
+                            displayReturnSuffix = "Downside";
+                        } else {
+                            // Gains -> Show CAGR if years > 0, else Absolute
+                            if (years > 0) {
+                                displayReturnVal = (Math.pow(fPrice / curPrice, 1 / years) - 1) * 100;
+                                displayReturnSuffix = "CAGR";
+                            } else {
+                                displayReturnVal = totalReturn;
+                                displayReturnSuffix = "Upside";
+                            }
+                        }
+                    }
+
+                    const yearLabel = years === 0 ? "Instant" : `Year ${years}`;
+
+                    html += `
+                            <div
+                                class="bg-white rounded-lg border-t-4 border-${colors[scen]}-500 shadow p-4 flex flex-col justify-between h-full">
+                                <div>
+                                    <div class="flex justify-between items-center mb-2">
+                                        <h4 class="font-bold text-${colors[scen]}-700 text-lg">${scen} Case</h4>
+                                        <span
+                                            class="text-xs font-bold px-2 py-1 rounded bg-${colors[scen]}-100 text-${colors[scen]}-800">${yearLabel}</span>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-y-1 gap-x-2 text-xs mb-3">
+                                        <div class="text-gray-500">Proj. EPS</div>
+                                        <div class="font-bold text-right">${currencySymbol}${fEps.toFixed(2)}</div>
+                                        <div class="text-gray-500">Mkt Cap</div>
+                                        <div class="font-bold text-right">${formatCurrency(fMcap * 1000000)}</div>
+                                        <div class="text-gray-500">Target PE</div>
+                                        <div class="font-bold text-right">${finalPe}</div>
+                                    </div>
+                                    <div id="mini-chart-${scen}" class="mini-chart mb-3"></div>
+                                </div>
+                                <div class="mt-auto pt-3 border-t">
+                                    <div class="flex justify-between items-end">
+                                        <div>
+                                            <div class="text-xs text-gray-500">Target Price</div>
+                                            <div class="text-2xl font-bold text-gray-800">${currencySymbol}${fPrice.toFixed(2)}</div>
+                                        </div>
+                                        <div class="text-right">
+                                            <div class="text-xs text-gray-500">Potential</div>
+                                            <div
+                                                class="text-sm font-bold ${displayReturnVal >= 0 ? 'text-green-600' : 'text-red-600'}">
+                                                ${displayReturnVal > 0 ? '+' : ''}${displayReturnVal.toFixed(2)}%
+                                                ${displayReturnSuffix}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            `;
+
+                    setTimeout(() => renderMiniChart(`mini-chart-${scen}`, trajectory, colors[scen], currencySymbol), 0);
+                });
+
+                document.getElementById('results-area').innerHTML = html;
+            }
+
+        function renderMiniChart(id, data, colorName, currencySymbol = '$') {
+            const hexMap = { green: '#16a34a', yellow: '#ca8a04', red: '#dc2626' };
+            new ApexCharts(document.getElementById(id), {
+                series: [{ data: data }],
+                chart: { type: 'area', height: 80, sparkline: { enabled: true } },
+                stroke: { curve: 'smooth', width: 2 },
+                fill: {
+                    type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.7, opacityTo: 0.2 }
+                },
+                colors: [hexMap[colorName]],
+                tooltip: {
+                    fixed: { enabled: false }, x: { show: false }, y: {
+                        title: {
+                            formatter: () => currencySymbol
+                        }
+                    }, marker: { show: false }
+                }
+            }).render();
+        }
+
+        // --- SAVE/LOAD ---
+        async function saveProjections() {
+            const ticker = document.getElementById('ticker').value;
+            if (!ticker) return alert("Please load a ticker first.");
+
+            const simpleData = calcMode === 'simple' ? {
+                rev: {
+                    bull: document.getElementById('revBull').value, base:
+                        document.getElementById('revBase').value, bear: document.getElementById('revBear').value
+                },
+                pat: {
+                    bull: document.getElementById('patBull').value, base:
+                        document.getElementById('patBase').value, bear: document.getElementById('patBear').value
+                },
+                pe: {
+                    bull: document.getElementById('peBull').value, base:
+                        document.getElementById('peBase').value, bear: document.getElementById('peBear').value
+                }
+            } : null;
+
+            const payload = {
+                ticker,
+                mode: calcMode,
+                exitYear: document.getElementById('exitYear').value,
+                simpleData,
+                complexData
+            };
+
+            const res = await fetch('/api/projections', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const d = await res.json();
+            if (d.success) alert("Configuration Saved!");
+            else alert("Error saving.");
+        }
+
+        async function loadProjections() {
+            const ticker = document.getElementById('ticker').value;
+            if (!ticker) return alert("Please load a ticker first.");
+
+            const res = await fetch(`/api/projections/load/${ticker}`);
+            if (!res.ok) return alert("No saved configuration found.");
+
+            const data = await res.json();
+            calcMode = data.mode;
+            document.getElementById('calc-mode-toggle').checked = (calcMode === 'complex');
+            document.getElementById('exitYear').value = data.exitYear;
+
+            if (data.complexData) complexData = data.complexData;
+
+            // Show saved time if available
+            if (data.saved_at) {
+                document.getElementById('proj-saved-at').textContent = `Saved: ${data.saved_at}`;
+            }
+
+            initCalculatorState(); // Refresh UI structure
+
+            // Populate inputs if Simple mode
+            if (calcMode === 'simple' && data.simpleData) {
+                const s = data.simpleData;
+                ['rev', 'pat', 'pe'].forEach(k => {
+                    ['Bull', 'Base', 'Bear'].forEach(c => {
+                        const el = document.getElementById(`${k}${c}`);
+                        if (el) el.value = s[k][c.toLowerCase()];
+                    });
+                });
+            }
+            alert("Configuration Loaded!");
+        }
+
+        function resetProjections() {
+            if (!confirm("Reset all projection values to defaults?")) return;
+
+            const defaults = {
+                rev: { bull: 20, base: 15, bear: 7 },
+                pat: { bull: 20, base: 15, bear: 7 },
+                pe: { bull: 28, base: 25, bear: 18 }
+            };
+
+            if (calcMode === 'simple') {
+                ['rev', 'pat', 'pe'].forEach(metric => {
+                    ['Bull', 'Base', 'Bear'].forEach(caseType => {
+                        const el = document.getElementById(`${metric}${caseType}`);
+                        if (el) el.value = defaults[metric][caseType.toLowerCase()];
+                    });
+                });
+            } else {
+                // Reset Complex Data
+                for (let i = 1; i < complexData.length; i++) {
+                    complexData[i] = JSON.parse(JSON.stringify(defaults));
+                } renderComplexInputs();
+            }
+            calculateProjections();
+        } </script>
+</body>
+
+</html>
