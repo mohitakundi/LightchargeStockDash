@@ -1436,11 +1436,29 @@
                     body: JSON.stringify({ ticker, message, years: 5 })
                 });
 
-                const data = await res.json();
-
                 // Remove typing indicator
                 const messages = document.getElementById('ai-chat-messages');
-                messages.removeChild(messages.lastChild);
+                if (messages.lastChild && messages.lastChild.innerText.includes('Thinking')) {
+                    messages.removeChild(messages.lastChild);
+                }
+
+                // Handle non-OK responses
+                if (!res.ok) {
+                    const errorText = await res.text();
+                    addAIMessage(`❌ Server error: ${res.status} - ${errorText.slice(0, 100)}`, false);
+                    return;
+                }
+
+                // Safely parse JSON
+                let data;
+                try {
+                    data = await res.json();
+                } catch (parseError) {
+                    const rawText = await res.text().catch(() => 'Unknown response');
+                    addAIMessage(`❌ Failed to parse AI response. The AI may have returned an incomplete response.`, false);
+                    console.error('JSON Parse Error:', parseError, 'Raw response:', rawText);
+                    return;
+                }
 
                 if (data.error) {
                     addAIMessage(`❌ ${data.error}`, false);
