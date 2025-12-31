@@ -828,36 +828,18 @@
                 </div>
             </div>
 
-            <!-- 7. Earnings Breakdown Chart (NEW) -->
-            <div class="card p-4 sm:p-6">
-                <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2 mb-4">
-                    <i data-lucide="bar-chart-3" class="w-5 h-5 text-indigo-600"></i>
-                    Income Statement Breakdown
-                </h3>
-                <div id="earnings-breakdown" class="grid grid-cols-2 md:grid-cols-5 gap-3">
-                    <div class="bg-blue-100 rounded-lg p-3 text-center">
-                        <p class="text-xs text-blue-600 font-medium">Revenue</p>
-                        <p id="eb-revenue" class="text-sm font-bold text-blue-700">-</p>
-                    </div>
-                    <div class="bg-red-100 rounded-lg p-3 text-center">
-                        <p class="text-xs text-red-600 font-medium">Cost of Revenue</p>
-                        <p id="eb-cost" class="text-sm font-bold text-red-700">-</p>
-                    </div>
-                    <div class="bg-green-100 rounded-lg p-3 text-center">
-                        <p class="text-xs text-green-600 font-medium">Gross Profit</p>
-                        <p id="eb-gross" class="text-sm font-bold text-green-700">-</p>
-                    </div>
-                    <div class="bg-amber-100 rounded-lg p-3 text-center">
-                        <p class="text-xs text-amber-600 font-medium">Op. Expenses</p>
-                        <p id="eb-opex" class="text-sm font-bold text-amber-700">-</p>
-                        <p class="text-[10px] text-amber-500 mt-1">
-                            R&D: <span id="eb-rd">-</span> | SG&A: <span id="eb-sga">-</span>
-                        </p>
-                    </div>
-                    <div class="bg-purple-100 rounded-lg p-3 text-center">
-                        <p class="text-xs text-purple-600 font-medium">Net Income</p>
-                        <p id="eb-net" class="text-sm font-bold text-purple-700">-</p>
-                        <p class="text-[10px] text-purple-500 mt-1">Tax: <span id="eb-tax">-</span></p>
+            <!-- 7. Income Statement Flow (Sankey Chart) -->
+            <div class="card">
+                <div class="p-4 border-b bg-gray-50 flex items-center justify-between">
+                    <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
+                        <i data-lucide="git-branch" class="w-5 h-5 text-indigo-600"></i>
+                        Income Statement Flow
+                    </h3>
+                    <span class="text-xs text-gray-500">Most Recent Fiscal Year</span>
+                </div>
+                <div id="sankey-chart" class="p-4" style="min-height: 320px; position: relative;">
+                    <div class="flex items-center justify-center h-full text-gray-400 text-sm">
+                        Loading chart...
                     </div>
                 </div>
             </div>
@@ -907,22 +889,6 @@
                         class="text-sm font-bold text-indigo-600 hover:text-indigo-800 flex items-center justify-center gap-1 w-full transition-colors">
                         <i data-lucide="chevron-down" class="w-4 h-4"></i> Show Full History
                     </button>
-                </div>
-            </div>
-
-            <!-- 10. Income Statement Sankey Chart -->
-            <div class="card mt-4">
-                <div class="p-4 border-b bg-gray-50 flex items-center justify-between">
-                    <h3 class="font-bold text-gray-700 flex items-center gap-2">
-                        <i data-lucide="git-branch" class="w-5 h-5 text-indigo-600"></i>
-                        Income Statement Flow
-                    </h3>
-                    <span class="text-xs text-gray-500">Most Recent Fiscal Year</span>
-                </div>
-                <div id="sankey-chart" class="p-4" style="min-height: 350px; position: relative;">
-                    <div class="flex items-center justify-center h-full text-gray-400 text-sm">
-                        Loading chart...
-                    </div>
                 </div>
             </div>
 
@@ -3188,12 +3154,28 @@
             // Parse values (handle null/undefined)
             const parse = (v) => Math.abs(parseFloat(v)) || 0;
 
-            const revenue = parse(report.totalRevenue);
-            const costOfRevenue = parse(report.costOfRevenue);
-            const grossProfit = parse(report.grossProfit);
-            const opExpenses = parse(report.operatingExpenses) || (grossProfit - parse(report.operatingIncome));
-            const opIncome = parse(report.operatingIncome);
-            const netIncome = parse(report.netIncome);
+            // Get raw values
+            let revenue = parse(report.totalRevenue);
+            let grossProfit = parse(report.grossProfit);
+            let costOfRevenue = parse(report.costOfRevenue);
+            let opIncome = parse(report.operatingIncome);
+            let netIncome = parse(report.netIncome);
+
+            // Derive missing values for Indian stocks
+            // If costOfRevenue is missing but we have revenue and grossProfit, calculate it
+            if (costOfRevenue === 0 && revenue > 0 && grossProfit > 0) {
+                costOfRevenue = revenue - grossProfit;
+            }
+
+            // If grossProfit is missing but we have revenue and costOfRevenue, calculate it
+            if (grossProfit === 0 && revenue > 0 && costOfRevenue > 0) {
+                grossProfit = revenue - costOfRevenue;
+            }
+
+            // Operating expenses = Gross Profit - Operating Income
+            const opExpenses = parse(report.operatingExpenses) || Math.max(0, grossProfit - opIncome);
+
+            // Tax & Interest = Operating Income - Net Income
             const taxInterest = Math.max(0, opIncome - netIncome);
 
             if (revenue === 0) {
