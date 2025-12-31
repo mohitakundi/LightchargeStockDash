@@ -2,19 +2,22 @@ from http.server import BaseHTTPRequestHandler
 import json
 import os
 from datetime import datetime
-from supabase import create_client
-
-# Initialize Supabase
-supabase = create_client(
-    os.environ.get('SUPABASE_URL', ''),
-    os.environ.get('SUPABASE_SERVICE_KEY', os.environ.get('SUPABASE_KEY', ''))
-)
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         """Daily refresh endpoint - updates prices and chart data for all stocks."""
         try:
             import yfinance as yf
+            from supabase import create_client
+            
+            # Initialize Supabase inside handler
+            supabase_url = os.environ.get('SUPABASE_URL', '')
+            supabase_key = os.environ.get('SUPABASE_SERVICE_KEY', os.environ.get('SUPABASE_KEY', ''))
+            
+            if not supabase_url or not supabase_key:
+                return self.send_json({'error': 'Supabase credentials not configured'}, 500)
+            
+            supabase = create_client(supabase_url, supabase_key)
             
             # Get all tickers from database
             result = supabase.table('stock_data').select('ticker, data').execute()
