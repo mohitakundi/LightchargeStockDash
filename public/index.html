@@ -2140,27 +2140,34 @@
             }
         }
 
-        function getHistoricalRate(dateStr) {
-            // dateStr is 'YYYY-MM-DD' or timestamp
-            if (!historicalRates.length) return usdInrRate; // Fallback to current rate
+        function getHistoricalRate(dateInput) {
+            // dateInput is timestamp (number) or 'YYYY-MM-DD' string
+            if (!historicalRates.length) {
+                console.warn('No historical rates loaded, using current rate:', usdInrRate);
+                return usdInrRate;
+            }
 
-            const target = typeof dateStr === 'number' ? new Date(dateStr).toISOString().split('T')[0] : dateStr;
+            // Convert to YYYY-MM-DD string for comparison
+            let target;
+            if (typeof dateInput === 'number') {
+                const d = new Date(dateInput);
+                target = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            } else {
+                target = dateInput;
+            }
 
-            // First try exact match
-            const exact = historicalRates.find(r => r.date === target);
-            if (exact) return exact.rate;
-
-            // Find nearest date before target
+            // Find nearest date at or before target
             let nearest = null;
             for (const r of historicalRates) {
                 if (r.date <= target) {
                     nearest = r;
                 } else {
-                    break; // Rates are sorted, stop when we pass target
+                    break; // Rates are sorted ascending
                 }
             }
 
-            return nearest ? nearest.rate : historicalRates[0]?.rate || usdInrRate;
+            const rate = nearest ? nearest.rate : historicalRates[0]?.rate || usdInrRate;
+            return rate;
         }
         function set(id, val) {
             const el = document.getElementById(id); if (el) el.textContent = (val && val !== 'None') ?
@@ -2389,10 +2396,33 @@
             // Apply USD conversion for Indian stocks if in USD mode
             const isIndian = (currentStockData && currentStockData.market === 'IN');
             if (isIndian && currencyMode === 'usd') {
+                console.log('Applying USD conversion to chart...', {
+                    totalPoints: filteredData.length,
+                    historicalRatesLoaded: historicalRates.length
+                });
+
+                // Log first and last point conversion for debugging
+                if (filteredData.length > 0) {
+                    const first = filteredData[0];
+                    const last = filteredData[filteredData.length - 1];
+                    console.log('First point:', new Date(first.x).toISOString().split('T')[0],
+                        'INR:', first.y.toFixed(2),
+                        'Rate:', getHistoricalRate(first.x));
+                    console.log('Last point:', new Date(last.x).toISOString().split('T')[0],
+                        'INR:', last.y.toFixed(2),
+                        'Rate:', getHistoricalRate(last.x));
+                }
+
                 filteredData = filteredData.map(d => ({
                     x: d.x,
-                    y: d.y / getHistoricalRate(d.x) // Convert INR to USD using historical rate
+                    y: d.y / getHistoricalRate(d.x)
                 }));
+
+                // Log converted values
+                if (filteredData.length > 0) {
+                    console.log('First USD:', filteredData[0].y.toFixed(2),
+                        'Last USD:', filteredData[filteredData.length - 1].y.toFixed(2));
+                }
             }
 
             renderPriceChart(filteredData);
