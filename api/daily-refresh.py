@@ -35,8 +35,11 @@ class handler(BaseHTTPRequestHandler):
                 existing_data = stock['data']
                 
                 try:
+                    # Encode special characters for yfinance (e.g., M&M.NS -> M%26M.NS)
+                    yf_ticker_symbol = ticker.replace('&', '%26')
+                    
                     # Fetch latest data from yfinance
-                    yf_ticker = yf.Ticker(ticker)
+                    yf_ticker = yf.Ticker(yf_ticker_symbol)
                     info = yf_ticker.info
                     
                     # Get current price

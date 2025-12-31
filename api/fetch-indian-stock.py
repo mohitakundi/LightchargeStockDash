@@ -30,8 +30,11 @@ class handler(BaseHTTPRequestHandler):
             if not ticker.endswith('.NS') and not ticker.endswith('.BO'):
                 ticker += '.NS'
             
-            print(f"[yfinance] Fetching {ticker}...")
-            stock = yf.Ticker(ticker)
+            # Encode special characters for yfinance (e.g., M&M.NS -> M%26M.NS)
+            yf_ticker_symbol = ticker.replace('&', '%26')
+            
+            print(f"[yfinance] Fetching {ticker} (yf: {yf_ticker_symbol})...")
+            stock = yf.Ticker(yf_ticker_symbol)
             info = stock.info
             
             if not info or 'symbol' not in info:
