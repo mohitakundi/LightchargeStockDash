@@ -3294,13 +3294,13 @@
                 tr.className = "hover:bg-gray-50 transition border-b border-gray-100 last:border-0";
                 tr.innerHTML = `
                     <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">${r.fiscalDateEnding}</td>
-                    <td class="px-6 py-4 text-gray-700">${formatCurrency(r.totalRevenue)}</td>
+                    <td class="px-6 py-4 text-gray-700">${formatCurrency(r.totalRevenue, true)}</td>
                     <td class="px-6 py-4">${formatGrowth(revGrowth)}</td>
-                    <td class="px-6 py-4 text-gray-600">${formatCurrency(r.grossProfit)}</td>
-                    <td class="px-6 py-4 text-gray-600">${formatCurrency(r.operatingIncome)}</td>
-                    <td class="px-6 py-4 font-bold text-gray-900">${formatCurrency(r.netIncome)}</td>
+                    <td class="px-6 py-4 text-gray-600">${formatCurrency(r.grossProfit, true)}</td>
+                    <td class="px-6 py-4 text-gray-600">${formatCurrency(r.operatingIncome, true)}</td>
+                    <td class="px-6 py-4 font-bold text-gray-900">${formatCurrency(r.netIncome, true)}</td>
                     <td class="px-6 py-4">${formatGrowth(niGrowth)}</td>
-                    <td class="px-6 py-4 text-gray-600">${formatCurrency(r.ebitda)}</td>
+                    <td class="px-6 py-4 text-gray-600">${formatCurrency(r.ebitda, true)}</td>
                 `;
                 tbody.appendChild(tr);
             }
