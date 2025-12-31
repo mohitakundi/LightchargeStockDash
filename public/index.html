@@ -3709,44 +3709,33 @@
         function renderComplexInputs() {
             const div = document.getElementById('projection-inputs');
             document.getElementById('year-switcher').classList.remove('hidden');
-            document.getElementById('current-year-display').textContent = `Year ${currentEditYear}`;
+            document.getElementById('current-year-display').textContent = currentEditYear;
 
             const yData = complexData[currentEditYear]; // 1-based index matches array
 
             div.innerHTML = `
-                 <div class="bg-indigo-50 rounded-lg p-3 border border-indigo-100 mb-2">
-                    <div class="flex justify-between items-center mb-2">
-                        <span class="text-xs font-bold text-indigo-800 uppercase">Year ${currentEditYear} Assumptions</span>
+                 <div class="mb-3">
+                    <label class="text-xs font-bold text-gray-500 uppercase mb-1 block">Revenue Growth</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <input type="number" data-scen="bull" data-metric="rev" class="complex-inp input-field text-center text-green-600 bg-green-50 border-green-200" value="${yData.rev.bull}" placeholder="Bull">
+                        <input type="number" data-scen="base" data-metric="rev" class="complex-inp input-field text-center text-yellow-600 bg-yellow-50 border-yellow-200" value="${yData.rev.base}" placeholder="Base">
+                        <input type="number" data-scen="bear" data-metric="rev" class="complex-inp input-field text-center text-red-600 bg-red-50 border-red-200" value="${yData.rev.bear}" placeholder="Bear">
                     </div>
-                    
-                    <!-- Header -->
-                     <div class="grid grid-cols-4 gap-2 mb-2 items-center">
-                        <div class="text-[10px] font-bold text-gray-400">SCENARIO</div>
-                        <div class="text-[10px] font-bold text-gray-600 text-center">REV %</div>
-                        <div class="text-[10px] font-bold text-gray-600 text-center">PAT %</div>
-                        <div class="text-[10px] font-bold text-gray-600 text-center">PE</div>
+                </div>
+                <div class="mb-3">
+                    <label class="text-xs font-bold text-gray-500 uppercase mb-1 block">PAT Growth</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <input type="number" data-scen="bull" data-metric="pat" class="complex-inp input-field text-center text-green-600 bg-green-50 border-green-200" value="${yData.pat.bull}" placeholder="Bull">
+                        <input type="number" data-scen="base" data-metric="pat" class="complex-inp input-field text-center text-yellow-600 bg-yellow-50 border-yellow-200" value="${yData.pat.base}" placeholder="Base">
+                        <input type="number" data-scen="bear" data-metric="pat" class="complex-inp input-field text-center text-red-600 bg-red-50 border-red-200" value="${yData.pat.bear}" placeholder="Bear">
                     </div>
-
-                    <!-- Bull -->
-                     <div class="grid grid-cols-4 gap-2 mb-2 items-center">
-                        <div class="text-xs font-bold text-green-600">Bull</div>
-                        <input type="number" data-scen="bull" data-metric="rev" class="complex-inp w-full border rounded px-1 py-1 text-xs text-center text-green-600 bg-green-50 border-green-200" value="${yData.rev.bull}">
-                        <input type="number" data-scen="bull" data-metric="pat" class="complex-inp w-full border rounded px-1 py-1 text-xs text-center text-green-600 bg-green-50 border-green-200" value="${yData.pat.bull}">
-                        <input type="number" data-scen="bull" data-metric="pe" class="complex-inp w-full border rounded px-1 py-1 text-xs text-center text-green-600 bg-green-50 border-green-200" value="${yData.pe.bull}">
-                    </div>
-                     <!-- Base -->
-                     <div class="grid grid-cols-4 gap-2 mb-2 items-center">
-                        <div class="text-xs font-bold text-amber-600">Base</div>
-                        <input type="number" data-scen="base" data-metric="rev" class="complex-inp w-full border rounded px-1 py-1 text-xs text-center text-amber-600 bg-amber-50 border-amber-200" value="${yData.rev.base}">
-                        <input type="number" data-scen="base" data-metric="pat" class="complex-inp w-full border rounded px-1 py-1 text-xs text-center text-amber-600 bg-amber-50 border-amber-200" value="${yData.pat.base}">
-                        <input type="number" data-scen="base" data-metric="pe" class="complex-inp w-full border rounded px-1 py-1 text-xs text-center text-amber-600 bg-amber-50 border-amber-200" value="${yData.pe.base}">
-                    </div>
-                     <!-- Bear -->
-                     <div class="grid grid-cols-4 gap-2 mb-2 items-center">
-                        <div class="text-xs font-bold text-red-600">Bear</div>
-                        <input type="number" data-scen="bear" data-metric="rev" class="complex-inp w-full border rounded px-1 py-1 text-xs text-center text-red-600 bg-red-50 border-red-200" value="${yData.rev.bear}">
-                        <input type="number" data-scen="bear" data-metric="pat" class="complex-inp w-full border rounded px-1 py-1 text-xs text-center text-red-600 bg-red-50 border-red-200" value="${yData.pat.bear}">
-                        <input type="number" data-scen="bear" data-metric="pe" class="complex-inp w-full border rounded px-1 py-1 text-xs text-center text-red-600 bg-red-50 border-red-200" value="${yData.pe.bear}">
+                </div>
+                <div class="mb-3">
+                    <label class="text-xs font-bold text-gray-500 uppercase mb-1 block">Target PE</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <input type="number" data-scen="bull" data-metric="pe" class="complex-inp input-field text-center text-green-600 bg-green-50 border-green-200" value="${yData.pe.bull}" placeholder="Bull">
+                        <input type="number" data-scen="base" data-metric="pe" class="complex-inp input-field text-center text-yellow-600 bg-yellow-50 border-yellow-200" value="${yData.pe.base}" placeholder="Base">
+                        <input type="number" data-scen="bear" data-metric="pe" class="complex-inp input-field text-center text-red-600 bg-red-50 border-red-200" value="${yData.pe.bear}" placeholder="Bear">
                     </div>
                 </div>
             `;
