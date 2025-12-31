@@ -38,6 +38,14 @@ class handler(BaseHTTPRequestHandler):
                 self.send_json({'error': f'No data found for {ticker}'}, 404)
                 return
             
+            # Validate that we have actual price data (not just an empty shell)
+            price = info.get('currentPrice') or info.get('regularMarketPrice')
+            if not price or price == 0:
+                self.send_json({
+                    'error': f'Invalid ticker "{ticker}" - no price data found. Please check the symbol.'
+                }, 404)
+                return
+            
             # Build complete normalized data
             data = {
                 'overview': self.build_overview(info),

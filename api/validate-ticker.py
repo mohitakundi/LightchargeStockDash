@@ -30,12 +30,13 @@ class handler(BaseHTTPRequestHandler):
             stock = yf.Ticker(ticker)
             info = stock.info
             
-            # Check if we got valid data
-            if not info or info.get('regularMarketPrice') is None:
-                # Sometimes yfinance returns empty info for invalid tickers
+            # Check if we got valid data with an actual price
+            price = info.get('regularMarketPrice') or info.get('currentPrice')
+            if not info or not price or price == 0:
+                # yfinance returns empty info or 0 price for invalid tickers
                 self.send_json({
                     'valid': False, 
-                    'error': f'Ticker "{ticker}" not found'
+                    'error': f'Ticker "{ticker}" not found or has no price data'
                 })
                 return
             
