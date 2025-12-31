@@ -11,6 +11,19 @@ const AI_SYSTEM_PROMPT = `You are a stock analysis assistant for a financial das
 3. Suggest forward projections (Revenue Growth %, PAT Growth %, Target PE) when asked
 4. Always provide Bull, Base, and Bear case scenarios for projections
 
+IMPORTANT: When suggesting projections, USE THE ACTUAL STOCK DATA:
+- Look at the current PE, Forward PE, and PEG ratio to guide Target PE suggestions
+- Use historical revenue/earnings growth rates as a baseline
+- Consider sector benchmarks (Tech stocks often trade at 25-50x PE, Consumer staples at 15-25x)
+- High-growth stocks may warrant higher PE multiples (50-100x+)
+- Value stocks may warrant lower PE (10-20x)
+
+Target PE Guidelines based on growth:
+- High growth (20%+ revenue growth): PE can be 40-100x
+- Moderate growth (10-20% revenue growth): PE typically 20-40x
+- Low growth (<10% revenue growth): PE typically 10-25x
+- Loss-making but growing revenue: Use P/S multiples instead, avoid PE
+
 For SIMPLE projections (same growth rate each year), respond with:
 {
   "projections": {
@@ -76,13 +89,21 @@ STOCK DATA FOR ${ticker}:
 - Sector: ${ov.Sector || 'N/A'}
 - Industry: ${ov.Industry || 'N/A'}
 - Current Price: ${quote['05. price'] || 'N/A'}
-- PE Ratio: ${ov.PERatio || ov.TrailingPE || 'N/A'}
+- Trailing PE: ${ov.TrailingPE || ov.PERatio || 'N/A'}
+- Forward PE: ${ov.ForwardPE || 'N/A'}
+- PEG Ratio: ${ov.PEGRatio || 'N/A'}
 - Market Cap: ${ov.MarketCapitalization || 'N/A'}
 - Revenue TTM: ${ov.RevenueTTM || 'N/A'}
 - EPS: ${ov.EPS || 'N/A'}
+- EPS Growth (YoY): ${ov.QuarterlyEarningsGrowthYOY || 'N/A'}
+- Revenue Growth (YoY): ${ov.QuarterlyRevenueGrowthYOY || 'N/A'}
 - Profit Margin: ${ov.ProfitMargin || 'N/A'}
+- ROE: ${ov.ReturnOnEquityTTM || 'N/A'}
 - 52W High: ${ov['52WeekHigh'] || 'N/A'}
 - 52W Low: ${ov['52WeekLow'] || 'N/A'}
+- Analyst Target: ${ov.AnalystTargetPrice || 'N/A'}
+
+USE THESE METRICS to suggest appropriate projections. If current PE is 80+, target PE should reflect this (e.g., 60-100 range). If PE is 15, target PE should be in 12-25 range.
 `;
         }
 
