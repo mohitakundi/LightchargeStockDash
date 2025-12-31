@@ -2062,7 +2062,7 @@
             // GLOBAL mode: accept both US and Indian tickers as-is
 
             try {
-                const res = await fetch(`/api/stock-data?ticker=${ticker}`);
+                const res = await fetch(`/api/stock-data?ticker=${encodeURIComponent(ticker)}`);
                 if (!res.ok) throw new Error("Data not found locally.");
                 const data = await res.json();
 
