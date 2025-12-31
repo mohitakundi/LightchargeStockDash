@@ -1,9 +1,9 @@
 import { supabase, jsonResponse, corsHeaders } from './_utils.js';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 
 export const config = { runtime: 'edge' };
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 const AI_SYSTEM_PROMPT = `You are a stock analysis assistant for a financial dashboard. Your job is to:
 1. Answer questions about the company - use your general knowledge for industry info, competitors, business model, history, etc.
@@ -35,7 +35,7 @@ export default async function handler(request) {
     try {
         const body = await request.json();
         const ticker = (body.ticker || '').toUpperCase().trim();
-        const question = body.question || body.message || '';  // Accept both 'question' and 'message'
+        const question = body.question || body.message || '';  // Accept both
         const history = body.history || [];
 
         if (!ticker || !question) {
@@ -77,18 +77,13 @@ ${stockContext}
 
 USER QUESTION: ${question}`;
 
-        const model = genAI.getGenerativeModel({ model: 'gemma-3-27b-it' });
+        // Use the new @google/genai SDK with gemma-3-27b-it model
+        const response = await ai.models.generateContent({
+            model: 'gemma-3-27b-it',
+            contents: prompt
+        });
 
-        // Build chat history
-        const chatHistory = history.map(msg => ({
-            role: msg.role === 'assistant' ? 'model' : 'user',
-            parts: [{ text: msg.content }]
-        }));
-
-        const chat = model.startChat({ history: chatHistory });
-        const result = await chat.sendMessage(prompt);
-        const response = await result.response;
-        let responseText = response.text().trim();
+        let responseText = response.text || '';
 
         // Try to parse as JSON for projections
         let projections = null;
