@@ -1918,17 +1918,8 @@
             let ticker = document.getElementById('ticker').value.trim().toUpperCase();
             if (!ticker) return alert('Enter a ticker symbol first');
 
-            // Apply market-specific ticker formatting
-            if (currentMarket === 'IN') {
-                if (!ticker.endsWith('.NS') && !ticker.endsWith('.BO')) {
-                    ticker += '.NS';
-                }
-            } else {
-                // Reject Indian tickers in US mode
-                if (ticker.endsWith('.NS') || ticker.endsWith('.BO')) {
-                    return alert('Switch to India market for Indian stocks');
-                }
-            }
+            // Backend auto-detects market from ticker suffix (.NS/.BO = India)
+            // No need to enforce market matching here
 
             const btn = document.getElementById('refresh-ticker-btn');
             const originalHTML = btn.innerHTML;
