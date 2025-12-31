@@ -4270,11 +4270,26 @@
             const terminalGrowth = parseFloat(document.getElementById('dcf-terminal').value) / 100;
             const years = parseInt(document.getElementById('dcf-years').value);
 
-            // Get FCF from cash flow statement
-            const cashflow = data.cashflow?.annualReports?.[0];
-            const operatingCF = parseFloat(cashflow?.operatingCashflow) || 0;
-            const capex = Math.abs(parseFloat(cashflow?.capitalExpenditures)) || 0;
-            const fcf = operatingCF - capex;
+            // Get FCF - try multiple sources
+            // 1. Try yfinance overview (freeCashflow field)
+            // 2. Try cashflow statement (if available)
+            // 3. Derive from operating income if nothing else
+            const ov = data.overview || {};
+            let fcf = parseFloat(ov.freeCashflow) || parseFloat(ov.FreeCashflow) || 0;
+
+            // Fallback to cashflow statement if available
+            if (fcf === 0) {
+                const cashflow = data.cashflow?.annualReports?.[0];
+                const operatingCF = parseFloat(cashflow?.operatingCashflow) || 0;
+                const capex = Math.abs(parseFloat(cashflow?.capitalExpenditures)) || 0;
+                fcf = operatingCF - capex;
+            }
+
+            // Second fallback: Try operating cash flow from overview
+            if (fcf === 0) {
+                const opCashflow = parseFloat(ov.operatingCashflow) || parseFloat(ov.OperatingCashflow) || 0;
+                fcf = opCashflow; // Use operating cashflow directly if FCF not available
+            }
 
             // Get shares outstanding and current price
             const sharesOutstanding = parseFloat(data.overview?.SharesOutstanding) || 0;

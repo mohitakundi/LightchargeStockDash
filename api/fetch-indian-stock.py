@@ -132,6 +132,9 @@ class handler(BaseHTTPRequestHandler):
             'AnalystRatingHold': '0',
             'AnalystRatingSell': '0',
             'AnalystRatingStrongSell': '0',
+            # Cash flow fields for DCF
+            'freeCashflow': safe_str('freeCashflow'),
+            'operatingCashflow': safe_str('operatingCashflow'),
         }
 
     def build_quote(self, info):
