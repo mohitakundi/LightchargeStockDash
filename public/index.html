@@ -1081,6 +1081,7 @@
         let measurePoints = [];
         let chartInstance = null;
         let isLocalUser = false; // Track if accessing from local network
+        let historicalRates = []; // Historical exchange rates cache {date, rate}
 
         // Financials State
         let currentFinancialReports = [];
@@ -1291,6 +1292,10 @@
             }
             // Re-render financial table (pass annualReports array, not the full income object)
             renderFinancialTable(currentStockData.income?.annualReports);
+
+            // Re-render chart with currency conversion (uses currently active range filter)
+            const activeRange = document.querySelector('.btn-range.active')?.dataset.range || '5Y';
+            filterChart(activeRange);
         }
 
         // Check if user is local (for showing admin-only features)
@@ -1302,6 +1307,9 @@
                 document.getElementById('load-proj-btn').classList.remove('hidden');
             }
         }).catch(() => { isLocalUser = false; });
+
+        // Load historical exchange rates for chart USD conversion
+        loadHistoricalRates();
 
         // --- AI CHAT ASSISTANT ---
         let aiPanelOpen = false;
@@ -2117,6 +2125,43 @@
             if (!val || val === 'None') return '-';
             return parseFloat(val).toLocaleString(undefined, { maximumFractionDigits: decimals });
         }
+
+        // --- HISTORICAL EXCHANGE RATES ---
+        async function loadHistoricalRates() {
+            try {
+                const res = await fetch(`${SUPABASE_URL}/rest/v1/exchange_rates?order=date.asc`, {
+                    headers: { 'apikey': SUPABASE_KEY }
+                });
+                if (!res.ok) return;
+                historicalRates = await res.json();
+                console.log(`Loaded ${historicalRates.length} historical exchange rates`);
+            } catch (e) {
+                console.error('Failed to load historical rates:', e);
+            }
+        }
+
+        function getHistoricalRate(dateStr) {
+            // dateStr is 'YYYY-MM-DD' or timestamp
+            if (!historicalRates.length) return usdInrRate; // Fallback to current rate
+
+            const target = typeof dateStr === 'number' ? new Date(dateStr).toISOString().split('T')[0] : dateStr;
+
+            // First try exact match
+            const exact = historicalRates.find(r => r.date === target);
+            if (exact) return exact.rate;
+
+            // Find nearest date before target
+            let nearest = null;
+            for (const r of historicalRates) {
+                if (r.date <= target) {
+                    nearest = r;
+                } else {
+                    break; // Rates are sorted, stop when we pass target
+                }
+            }
+
+            return nearest ? nearest.rate : historicalRates[0]?.rate || usdInrRate;
+        }
         function set(id, val) {
             const el = document.getElementById(id); if (el) el.textContent = (val && val !== 'None') ?
                 val : '-';
@@ -2338,7 +2383,19 @@
             else if (rng === '3Y') cutoff.setFullYear(now.getFullYear() - 3);
             else if (rng === '5Y') cutoff.setFullYear(now.getFullYear() - 5);
             else cutoff.setFullYear(1900);
-            renderPriceChart(fullHistory.filter(d => d.x >= cutoff.getTime()));
+
+            let filteredData = fullHistory.filter(d => d.x >= cutoff.getTime());
+
+            // Apply USD conversion for Indian stocks if in USD mode
+            const isIndian = (currentStockData && currentStockData.market === 'IN');
+            if (isIndian && currencyMode === 'usd') {
+                filteredData = filteredData.map(d => ({
+                    x: d.x,
+                    y: d.y / getHistoricalRate(d.x) // Convert INR to USD using historical rate
+                }));
+            }
+
+            renderPriceChart(filteredData);
         }
         function renderPriceChart(data) {
             if (chartInstance) chartInstance.destroy();
