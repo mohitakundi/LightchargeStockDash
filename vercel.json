@@ -1,5 +1,10 @@
 {
     "buildCommand": "echo 'No build'",
     "outputDirectory": "public",
-    "installCommand": "pip install -r requirements.txt"
+    "rewrites": [
+        {
+            "source": "/admin",
+            "destination": "/admin.html"
+        }
+    ]
 }
