@@ -603,7 +603,7 @@
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                     <div class="input-group">
                         <label class="input-label">Growth Rate (%)</label>
-                        <input type="range" id="dcf-growth" min="0" max="30" value="10" step="1"
+                        <input type="range" id="dcf-growth" min="0" max="100" value="10" step="1"
                             class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
                             oninput="document.getElementById('dcf-growth-val').textContent = this.value + '%'; calculateDCF();">
                         <span id="dcf-growth-val" class="text-sm font-bold text-emerald-600">10%</span>
@@ -617,14 +617,14 @@
                     </div>
                     <div class="input-group">
                         <label class="input-label">Terminal Growth (%)</label>
-                        <input type="range" id="dcf-terminal" min="0" max="5" value="2.5" step="0.5"
+                        <input type="range" id="dcf-terminal" min="0" max="10" value="2.5" step="0.5"
                             class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
                             oninput="document.getElementById('dcf-terminal-val').textContent = this.value + '%'; calculateDCF();">
                         <span id="dcf-terminal-val" class="text-sm font-bold text-blue-600">2.5%</span>
                     </div>
                     <div class="input-group">
                         <label class="input-label">Projection Years</label>
-                        <input type="range" id="dcf-years" min="3" max="10" value="5" step="1"
+                        <input type="range" id="dcf-years" min="3" max="30" value="5" step="1"
                             class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
                             oninput="document.getElementById('dcf-years-val').textContent = this.value + ' yrs'; calculateDCF();">
                         <span id="dcf-years-val" class="text-sm font-bold text-purple-600">5 yrs</span>
