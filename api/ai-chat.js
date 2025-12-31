@@ -83,6 +83,14 @@ export default async function handler(request) {
             const ov = d.overview || {};
             const quote = d.quote?.['Global Quote'] || {};
 
+            // Helper to format decimal as percentage
+            const toPercent = (val) => {
+                if (!val || val === 'None') return 'N/A';
+                const num = parseFloat(val);
+                if (isNaN(num)) return 'N/A';
+                return `${(num * 100).toFixed(1)}%`;
+            };
+
             stockContext = `
 STOCK DATA FOR ${ticker}:
 - Company: ${ov.Name || 'N/A'}
@@ -95,13 +103,14 @@ STOCK DATA FOR ${ticker}:
 - Market Cap: ${ov.MarketCapitalization || 'N/A'}
 - Revenue TTM: ${ov.RevenueTTM || 'N/A'}
 - EPS: ${ov.EPS || 'N/A'}
-- EPS Growth (YoY): ${ov.QuarterlyEarningsGrowthYOY || 'N/A'}
-- Revenue Growth (YoY): ${ov.QuarterlyRevenueGrowthYOY || 'N/A'}
-- Profit Margin: ${ov.ProfitMargin || 'N/A'}
-- ROE: ${ov.ReturnOnEquityTTM || 'N/A'}
+- EPS Growth (YoY): ${toPercent(ov.QuarterlyEarningsGrowthYOY)}
+- Revenue Growth (YoY): ${toPercent(ov.QuarterlyRevenueGrowthYOY)}
+- Profit Margin: ${toPercent(ov.ProfitMargin)}
+- ROE: ${toPercent(ov.ReturnOnEquityTTM)}
 - 52W High: ${ov['52WeekHigh'] || 'N/A'}
 - 52W Low: ${ov['52WeekLow'] || 'N/A'}
 - Analyst Target: ${ov.AnalystTargetPrice || 'N/A'}
+
 
 USE THESE METRICS to suggest appropriate projections. If current PE is 80+, target PE should reflect this (e.g., 60-100 range). If PE is 15, target PE should be in 12-25 range.
 `;
