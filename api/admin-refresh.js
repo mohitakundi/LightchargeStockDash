@@ -56,12 +56,14 @@ export default async function handler(request) {
                 let stockData;
 
                 if (market === 'IN') {
-                    // Call Python function
-                    const baseUrl = process.env.VERCEL_URL
-                        ? `https://${process.env.VERCEL_URL}`
-                        : 'http://localhost:3000';
+                    // Call Python function - use request URL origin
+                    const url = new URL(request.url);
+                    const baseUrl = url.origin;
                     const res = await fetch(`${baseUrl}/api/fetch-indian-stock?ticker=${ticker}`);
-                    if (!res.ok) throw new Error('Python function failed');
+                    if (!res.ok) {
+                        const errData = await res.json().catch(() => ({}));
+                        throw new Error(errData.error || 'Python function failed');
+                    }
                     stockData = await res.json();
                 } else {
                     stockData = await fetchUSStock(ticker);
