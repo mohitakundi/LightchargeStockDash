@@ -1558,9 +1558,8 @@
                     });
                 });
 
-                // Reinitialize calculator and render
+                // Reinitialize calculator (which will call calculateProjections)
                 initCalculatorState();
-                calculateProjections();
             } else {
                 // Simple mode
                 document.getElementById('calc-mode-toggle').checked = false;
@@ -3289,7 +3288,8 @@
             // If not available, calculate: P/S = Market Cap / Revenue (TTM)
             if (!ps || isNaN(ps)) {
                 const marketCap = parseFloat(ov.MarketCapitalization);
-                const revenueTTM = parseFloat(income[0]?.totalRevenue); // Most recent annual revenue
+                // Use RevenueTTM (trailing twelve months) - more current than income statement
+                const revenueTTM = parseFloat(ov.RevenueTTM);
 
                 if (marketCap && revenueTTM && revenueTTM > 0) {
                     ps = marketCap / revenueTTM;
