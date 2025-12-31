@@ -95,6 +95,13 @@ async function fetchUSStock(ticker) {
 
     await delay(1500);
 
+    // Fetch cash flow for DCF valuation
+    const cashflow = await fetchWithDelay(
+        `${baseUrl}?function=CASH_FLOW&symbol=${ticker}&apikey=${ALPHA_VANTAGE_KEY}`
+    );
+
+    await delay(1500);
+
     const history = await fetchWithDelay(
         `${baseUrl}?function=TIME_SERIES_MONTHLY_ADJUSTED&symbol=${ticker}&apikey=${ALPHA_VANTAGE_KEY}`
     );
@@ -108,6 +115,7 @@ async function fetchUSStock(ticker) {
         quote,
         income: income.Information ? { annualReports: [] } : income,
         balance_sheet: balance_sheet.Information ? { annualReports: [] } : balance_sheet,
+        cashflow: cashflow.Information ? { annualReports: [] } : cashflow,
         history: history.Information ? { 'Monthly Adjusted Time Series': {} } : history,
         market: 'US',
         currency: 'USD',

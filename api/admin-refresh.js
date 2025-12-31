@@ -99,6 +99,8 @@ async function fetchUSStock(ticker) {
     await delay(1500);
     const balance_sheet = await fetch(`${baseUrl}?function=BALANCE_SHEET&symbol=${ticker}&apikey=${ALPHA_VANTAGE_KEY}`).then(r => r.json());
     await delay(1500);
+    const cashflow = await fetch(`${baseUrl}?function=CASH_FLOW&symbol=${ticker}&apikey=${ALPHA_VANTAGE_KEY}`).then(r => r.json());
+    await delay(1500);
     const history = await fetch(`${baseUrl}?function=TIME_SERIES_MONTHLY_ADJUSTED&symbol=${ticker}&apikey=${ALPHA_VANTAGE_KEY}`).then(r => r.json());
 
     return {
@@ -106,6 +108,7 @@ async function fetchUSStock(ticker) {
         quote,
         income: income.Information ? { annualReports: [] } : income,
         balance_sheet: balance_sheet.Information ? { annualReports: [] } : balance_sheet,
+        cashflow: cashflow.Information ? { annualReports: [] } : cashflow,
         history: history.Information ? { 'Monthly Adjusted Time Series': {} } : history,
         market: 'US',
         currency: 'USD',
