@@ -22,13 +22,27 @@ export default async function handler(request) {
         return new Response(null, { status: 204, headers: corsHeaders });
     }
 
-    // GET: Retrieve rate for a date (with fallback to nearest)
+    // GET: Retrieve rate for a date or all rates
     if (request.method === 'GET') {
         const url = new URL(request.url);
         const date = url.searchParams.get('date');
+        const all = url.searchParams.get('all');
+
+        // If 'all' param, return all cached rates for frontend chart
+        if (all === 'true') {
+            const { data, error } = await supabase
+                .from('exchange_rates')
+                .select('date, rate')
+                .order('date', { ascending: true });
+
+            if (error) {
+                return jsonResponse({ error: error.message }, 500);
+            }
+            return jsonResponse({ rates: data || [] });
+        }
 
         if (!date) {
-            return jsonResponse({ error: 'Date required (YYYY-MM-DD)' }, 400);
+            return jsonResponse({ error: 'Date required (YYYY-MM-DD) or use ?all=true' }, 400);
         }
 
         const rate = await getRateForDate(date);

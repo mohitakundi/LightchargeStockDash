@@ -2129,11 +2129,13 @@
         // --- HISTORICAL EXCHANGE RATES ---
         async function loadHistoricalRates() {
             try {
-                const res = await fetch(`${SUPABASE_URL}/rest/v1/exchange_rates?order=date.asc`, {
-                    headers: { 'apikey': SUPABASE_KEY }
-                });
-                if (!res.ok) return;
-                historicalRates = await res.json();
+                const res = await fetch('/api/exchange-history?all=true');
+                if (!res.ok) {
+                    console.warn('Failed to load historical rates:', res.status);
+                    return;
+                }
+                const data = await res.json();
+                historicalRates = data.rates || [];
                 console.log(`Loaded ${historicalRates.length} historical exchange rates`);
             } catch (e) {
                 console.error('Failed to load historical rates:', e);
