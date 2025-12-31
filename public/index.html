@@ -349,15 +349,28 @@
             </div>
 
             <!-- Valuation Analysis Section -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 <!-- PE Gauge -->
                 <div class="card p-6">
                     <h3 class="text-sm font-bold text-gray-900 uppercase mb-4 flex items-center gap-2">
-                        <i data-lucide="gauge" class="w-4 h-4"></i> Valuation Gauge
+                        <i data-lucide="gauge" class="w-4 h-4"></i> PE Valuation
                     </h3>
                     <div id="valuation-gauge" class="h-48"></div>
                     <div class="text-center mt-2">
                         <span class="text-xs text-gray-500">PE Ratio vs Fair PE</span>
+                    </div>
+                </div>
+
+                <!-- P/S Gauge (for growth companies) -->
+                <div class="card p-6">
+                    <h3 class="text-sm font-bold text-gray-900 uppercase mb-4 flex items-center gap-2">
+                        <i data-lucide="trending-up" class="w-4 h-4"></i> P/S Valuation
+                        <span
+                            class="text-[10px] font-normal text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">Growth</span>
+                    </h3>
+                    <div id="ps-gauge" class="h-48"></div>
+                    <div class="text-center mt-2">
+                        <span class="text-xs text-gray-500">Price/Sales vs Sector Avg</span>
                     </div>
                 </div>
 
@@ -1285,6 +1298,7 @@
             // Re-render visualizations that show currency
             renderFairValueBar(currentStockData);
             renderValuationGauge(currentStockData);
+            renderPSGauge(currentStockData);
             if (currentStockData.market === 'IN' && currentStockData.analyst_yf) {
                 renderAnalystRatingsYF(currentStockData.analyst_yf, currentStockData.overview);
             } else {
@@ -2069,6 +2083,7 @@
 
                 // Render Valuation visualizations
                 renderValuationGauge(data);
+                renderPSGauge(data);
                 renderFairValueBar(data);
 
                 // Populate new sections
@@ -3244,6 +3259,132 @@
 
             // Add status label below
             const gaugeEl = document.getElementById('valuation-gauge');
+            const statusDiv = document.createElement('div');
+            statusDiv.className = `text-center text-sm font-bold mt-2`;
+            statusDiv.style.color = color;
+            statusDiv.textContent = status;
+            gaugeEl.appendChild(statusDiv);
+        }
+
+        // --- P/S GAUGE (for growth companies) ---
+        let psGaugeInstance = null;
+
+        function renderPSGauge(data) {
+            const ov = data.overview || {};
+            const quote = data.quote?.['Global Quote'] || {};
+
+            // Get Price/Sales ratio
+            const ps = parseFloat(ov.PriceToSalesRatioTTM);
+
+            // Get sector benchmark for P/S
+            const sector = ov.Sector || 'DEFAULT';
+            const industry = ov.Industry || '';
+            let bench = SECTOR_BENCHMARKS['DEFAULT'];
+
+            for (const key in SECTOR_BENCHMARKS) {
+                if (sector.toLowerCase().includes(key.toLowerCase())) {
+                    bench = SECTOR_BENCHMARKS[key];
+                    break;
+                }
+            }
+            if (bench === SECTOR_BENCHMARKS['DEFAULT']) {
+                if (industry.includes('Internet') || industry.includes('Software') || industry.includes('Interactive Media')) {
+                    bench = SECTOR_BENCHMARKS['Technology'];
+                }
+            }
+
+            const fairPS = bench.PS || 4;
+
+            // Clear previous chart
+            if (psGaugeInstance) {
+                psGaugeInstance.destroy();
+                psGaugeInstance = null;
+            }
+            document.getElementById('ps-gauge').innerHTML = '';
+
+            if (!ps || ps <= 0) {
+                document.getElementById('ps-gauge').innerHTML =
+                    '<div class="flex items-center justify-center h-full text-gray-500 text-sm">No P/S data available</div>';
+                return;
+            }
+
+            // Calculate gauge position (similar to PE gauge logic)
+            const ratio = ps / fairPS;
+            let gaugeValue = Math.min(100, Math.max(0, (ratio / 3) * 100)); // 3x fair = 100%
+
+            // Color based on valuation
+            let color = '#10b981'; // Green
+            let status = 'Attractive';
+            if (ratio > 2) {
+                color = '#ef4444'; // Red
+                status = 'Expensive';
+            } else if (ratio > 1) {
+                color = '#f59e0b'; // Yellow
+                status = 'Fair Value';
+            }
+
+            psGaugeInstance = new ApexCharts(document.querySelector("#ps-gauge"), {
+                series: [gaugeValue],
+                chart: {
+                    type: 'radialBar',
+                    height: 200,
+                    sparkline: { enabled: true }
+                },
+                plotOptions: {
+                    radialBar: {
+                        startAngle: -135,
+                        endAngle: 135,
+                        hollow: {
+                            margin: 0,
+                            size: '60%'
+                        },
+                        track: {
+                            background: '#e7e7e7',
+                            strokeWidth: '100%',
+                            margin: 0
+                        },
+                        dataLabels: {
+                            show: true,
+                            name: {
+                                show: true,
+                                color: '#888',
+                                fontSize: '11px',
+                                offsetY: 25
+                            },
+                            value: {
+                                show: true,
+                                color: color,
+                                fontSize: '28px',
+                                fontWeight: 700,
+                                offsetY: -10,
+                                formatter: function () {
+                                    return `${ps.toFixed(1)}x`;
+                                }
+                            }
+                        }
+                    }
+                },
+                fill: {
+                    type: 'gradient',
+                    gradient: {
+                        shade: 'light',
+                        type: 'horizontal',
+                        shadeIntensity: 0.5,
+                        gradientToColors: [color],
+                        inverseColors: false,
+                        opacityFrom: 1,
+                        opacityTo: 1,
+                        stops: [0, 100]
+                    }
+                },
+                colors: [color],
+                labels: [`Fair P/S: ${fairPS.toFixed(1)}x`],
+                stroke: { lineCap: 'round' }
+            });
+            psGaugeInstance.render();
+
+            // Add status label below
+            const gaugeEl = document.getElementById('ps-gauge');
             const statusDiv = document.createElement('div');
             statusDiv.className = `text-center text-sm font-bold mt-2`;
             statusDiv.style.color = color;
