@@ -589,6 +589,85 @@
                 </div>
             </div>
 
+            <!-- DCF Calculator -->
+            <div class="card p-4 sm:p-6 border-l-4 border-emerald-600">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="calculator" class="w-5 h-5 text-emerald-600"></i>
+                        <h3 class="text-base sm:text-lg font-bold text-gray-900">DCF Valuation</h3>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span id="dcf-fcf-label" class="text-xs text-gray-500">FCF: -</span>
+                        <button type="button" onclick="calculateDCF()"
+                            class="px-3 py-1.5 bg-emerald-600 text-white text-sm rounded-lg hover:bg-emerald-700 transition flex items-center gap-1">
+                            <i data-lucide="refresh-cw" class="w-4 h-4"></i> Calculate
+                        </button>
+                    </div>
+                </div>
+
+                <!-- DCF Inputs Grid -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                    <div class="input-group">
+                        <label class="input-label">Growth Rate (%)</label>
+                        <input type="range" id="dcf-growth" min="0" max="30" value="10" step="1"
+                            class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                            oninput="document.getElementById('dcf-growth-val').textContent = this.value + '%'; calculateDCF();">
+                        <span id="dcf-growth-val" class="text-sm font-bold text-emerald-600">10%</span>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Discount Rate (%)</label>
+                        <input type="range" id="dcf-discount" min="5" max="20" value="10" step="0.5"
+                            class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                            oninput="document.getElementById('dcf-discount-val').textContent = this.value + '%'; calculateDCF();">
+                        <span id="dcf-discount-val" class="text-sm font-bold text-amber-600">10%</span>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Terminal Growth (%)</label>
+                        <input type="range" id="dcf-terminal" min="0" max="5" value="2.5" step="0.5"
+                            class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                            oninput="document.getElementById('dcf-terminal-val').textContent = this.value + '%'; calculateDCF();">
+                        <span id="dcf-terminal-val" class="text-sm font-bold text-blue-600">2.5%</span>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Projection Years</label>
+                        <input type="range" id="dcf-years" min="3" max="10" value="5" step="1"
+                            class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                            oninput="document.getElementById('dcf-years-val').textContent = this.value + ' yrs'; calculateDCF();">
+                        <span id="dcf-years-val" class="text-sm font-bold text-purple-600">5 yrs</span>
+                    </div>
+                </div>
+
+                <!-- DCF Results -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div class="bg-emerald-50 rounded-lg p-3 text-center border border-emerald-200">
+                        <p class="text-xs text-emerald-600 font-medium">Intrinsic Value</p>
+                        <p id="dcf-intrinsic" class="text-lg font-bold text-emerald-700">-</p>
+                    </div>
+                    <div class="bg-gray-50 rounded-lg p-3 text-center border border-gray-200">
+                        <p class="text-xs text-gray-600 font-medium">Current Price</p>
+                        <p id="dcf-current" class="text-lg font-bold text-gray-700">-</p>
+                    </div>
+                    <div class="bg-blue-50 rounded-lg p-3 text-center border border-blue-200">
+                        <p class="text-xs text-blue-600 font-medium">Upside/Downside</p>
+                        <p id="dcf-upside" class="text-lg font-bold text-blue-700">-</p>
+                    </div>
+                    <div class="bg-purple-50 rounded-lg p-3 text-center border border-purple-200">
+                        <p class="text-xs text-purple-600 font-medium">Margin of Safety</p>
+                        <p id="dcf-margin" class="text-lg font-bold text-purple-700">-</p>
+                    </div>
+                </div>
+
+                <!-- DCF Breakdown (Collapsible) -->
+                <details class="mt-3">
+                    <summary class="text-xs text-gray-500 cursor-pointer hover:text-gray-700">Show calculation breakdown
+                    </summary>
+                    <div id="dcf-breakdown"
+                        class="mt-2 text-xs text-gray-600 bg-gray-50 rounded p-2 font-mono overflow-x-auto">
+                        -
+                    </div>
+                </details>
+            </div>
+
             <!-- 4. CALCULATOR -->
             <div class="card p-4 sm:p-6 border-l-4 border-indigo-600">
                 <div
@@ -2098,6 +2177,7 @@
                 isFinancialsExpanded = false;
                 renderFinancialTable(data.income.annualReports);
                 renderSankeyChart(data.income.annualReports);
+                calculateDCF();
 
                 lucide.createIcons();
             } catch (e) { errEl.textContent = e.message; }
@@ -4175,6 +4255,115 @@
                 });
             }
             alert("Configuration Loaded!");
+        }
+
+        // =============================================
+        // DCF CALCULATOR
+        // =============================================
+        function calculateDCF() {
+            const data = currentStockData;
+            if (!data) return;
+
+            // Get inputs
+            const growthRate = parseFloat(document.getElementById('dcf-growth').value) / 100;
+            const discountRate = parseFloat(document.getElementById('dcf-discount').value) / 100;
+            const terminalGrowth = parseFloat(document.getElementById('dcf-terminal').value) / 100;
+            const years = parseInt(document.getElementById('dcf-years').value);
+
+            // Get FCF from cash flow statement
+            const cashflow = data.cashflow?.annualReports?.[0];
+            const operatingCF = parseFloat(cashflow?.operatingCashflow) || 0;
+            const capex = Math.abs(parseFloat(cashflow?.capitalExpenditures)) || 0;
+            const fcf = operatingCF - capex;
+
+            // Get shares outstanding and current price
+            const sharesOutstanding = parseFloat(data.overview?.SharesOutstanding) || 0;
+            const currentPrice = parseFloat(data.quote?.['Global Quote']?.['05. price']) ||
+                parseFloat(data.overview?.currentPrice) || 0;
+
+            // Update FCF label
+            const fcfLabel = document.getElementById('dcf-fcf-label');
+            if (fcf > 0) {
+                fcfLabel.textContent = `FCF: ${formatCurrency(fcf, true)}`;
+            } else {
+                fcfLabel.textContent = 'FCF: N/A';
+            }
+
+            // Validate inputs
+            if (fcf <= 0 || sharesOutstanding <= 0 || discountRate <= terminalGrowth) {
+                document.getElementById('dcf-intrinsic').textContent = 'N/A';
+                document.getElementById('dcf-current').textContent = formatCurrency(currentPrice);
+                document.getElementById('dcf-upside').textContent = '-';
+                document.getElementById('dcf-margin').textContent = '-';
+                document.getElementById('dcf-breakdown').textContent =
+                    fcf <= 0 ? 'Negative or zero FCF - DCF not applicable' :
+                        'Invalid parameters - discount rate must be greater than terminal growth';
+                return;
+            }
+
+            // Calculate projected FCFs
+            let projectedFCFs = [];
+            let discountedFCFs = [];
+            let currentFCF = fcf;
+            let totalDiscountedFCF = 0;
+
+            for (let i = 1; i <= years; i++) {
+                currentFCF = currentFCF * (1 + growthRate);
+                const discountFactor = Math.pow(1 + discountRate, i);
+                const discountedFCF = currentFCF / discountFactor;
+                projectedFCFs.push(currentFCF);
+                discountedFCFs.push(discountedFCF);
+                totalDiscountedFCF += discountedFCF;
+            }
+
+            // Calculate terminal value (Gordon Growth Model)
+            const terminalFCF = currentFCF * (1 + terminalGrowth);
+            const terminalValue = terminalFCF / (discountRate - terminalGrowth);
+            const discountedTerminalValue = terminalValue / Math.pow(1 + discountRate, years);
+
+            // Total enterprise value
+            const enterpriseValue = totalDiscountedFCF + discountedTerminalValue;
+
+            // Intrinsic value per share
+            const intrinsicValue = enterpriseValue / sharesOutstanding;
+
+            // Calculate upside/downside
+            const upside = ((intrinsicValue - currentPrice) / currentPrice) * 100;
+
+            // Margin of safety (how much below intrinsic value is current price)
+            const marginOfSafety = ((intrinsicValue - currentPrice) / intrinsicValue) * 100;
+
+            // Update UI
+            document.getElementById('dcf-intrinsic').textContent = formatCurrency(intrinsicValue);
+            document.getElementById('dcf-current').textContent = formatCurrency(currentPrice);
+
+            const upsideEl = document.getElementById('dcf-upside');
+            upsideEl.textContent = (upside > 0 ? '+' : '') + upside.toFixed(1) + '%';
+            upsideEl.className = `text-lg font-bold ${upside > 0 ? 'text-green-600' : 'text-red-600'}`;
+
+            const marginEl = document.getElementById('dcf-margin');
+            marginEl.textContent = marginOfSafety.toFixed(1) + '%';
+            marginEl.className = `text-lg font-bold ${marginOfSafety > 20 ? 'text-green-600' : marginOfSafety > 0 ? 'text-yellow-600' : 'text-red-600'}`;
+
+            // Build breakdown
+            const breakdown = `
+Base FCF: ${formatCurrency(fcf, true)}
+Growth Rate: ${(growthRate * 100).toFixed(1)}% | Discount: ${(discountRate * 100).toFixed(1)}% | Terminal: ${(terminalGrowth * 100).toFixed(1)}%
+────────────────────────────────
+Year  │ Projected FCF │ Discounted
+${projectedFCFs.map((pf, i) =>
+                `  ${i + 1}   │ ${formatCurrency(pf, true).padEnd(12)} │ ${formatCurrency(discountedFCFs[i], true)}`
+            ).join('\n')}
+────────────────────────────────
+Sum of Discounted FCFs: ${formatCurrency(totalDiscountedFCF, true)}
+Terminal Value: ${formatCurrency(terminalValue, true)} → Discounted: ${formatCurrency(discountedTerminalValue, true)}
+────────────────────────────────
+Enterprise Value: ${formatCurrency(enterpriseValue, true)}
+Shares Outstanding: ${(sharesOutstanding / 1e9).toFixed(2)}B
+Intrinsic Value/Share: ${formatCurrency(intrinsicValue)}
+            `.trim();
+
+            document.getElementById('dcf-breakdown').textContent = breakdown;
         }
 
         function resetProjections() {
