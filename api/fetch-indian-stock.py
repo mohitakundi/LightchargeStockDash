@@ -1,6 +1,7 @@
 """
 Python API route for fetching Indian stock data using yfinance.
 Vercel supports Python natively, so this works properly.
+This is a complete port of yfinance_fetcher.py functionality.
 """
 from http.server import BaseHTTPRequestHandler
 import json
@@ -19,7 +20,6 @@ class handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         try:
-            # Parse query parameters
             query = parse_qs(urlparse(self.path).query)
             ticker = query.get('ticker', [''])[0].upper().strip()
             
@@ -27,7 +27,6 @@ class handler(BaseHTTPRequestHandler):
                 self.send_json({'error': 'Ticker parameter required'}, 400)
                 return
             
-            # Ensure proper suffix for Indian stocks
             if not ticker.endswith('.NS') and not ticker.endswith('.BO'):
                 ticker += '.NS'
             
@@ -39,13 +38,14 @@ class handler(BaseHTTPRequestHandler):
                 self.send_json({'error': f'No data found for {ticker}'}, 404)
                 return
             
-            # Build normalized data
+            # Build complete normalized data
             data = {
                 'overview': self.build_overview(info),
                 'quote': self.build_quote(info),
                 'income': self.build_income(stock),
-                'balance_sheet': {'annualReports': []},
+                'balance_sheet': self.build_balance_sheet(stock),
                 'history': self.build_history(stock),
+                'analyst_yf': self.build_analyst(info),  # Native yfinance analyst data
                 'market': 'IN',
                 'currency': 'INR',
                 'usd_inr_rate': self.get_exchange_rate(),
@@ -64,12 +64,20 @@ class handler(BaseHTTPRequestHandler):
         self.send_header('Content-Type', 'application/json')
         self.send_header('Access-Control-Allow-Origin', '*')
         self.end_headers()
-        self.wfile.write(json.dumps(data).encode())
+        self.wfile.write(json.dumps(data, default=str).encode())
 
     def build_overview(self, info):
         def safe_str(key, default='N/A'):
             val = info.get(key)
             return str(val) if val is not None else default
+        
+        def format_timestamp(ts):
+            if ts is None:
+                return 'None'
+            try:
+                return datetime.fromtimestamp(ts).strftime('%Y-%m-%d')
+            except:
+                return 'None'
         
         return {
             'Symbol': safe_str('symbol'),
@@ -105,12 +113,19 @@ class handler(BaseHTTPRequestHandler):
             'Beta': safe_str('beta'),
             'DividendYield': safe_str('dividendYield'),
             'DividendPerShare': safe_str('dividendRate'),
-            'AnalystTargetPrice': safe_str('targetMeanPrice')
+            'ExDividendDate': format_timestamp(info.get('exDividendDate')),
+            'AnalystTargetPrice': safe_str('targetMeanPrice'),
+            # Analyst ratings breakdown
+            'AnalystRatingStrongBuy': '0',
+            'AnalystRatingBuy': '0',
+            'AnalystRatingHold': '0',
+            'AnalystRatingSell': '0',
+            'AnalystRatingStrongSell': '0',
         }
 
     def build_quote(self, info):
         price = info.get('currentPrice') or info.get('regularMarketPrice', 0)
-        prev_close = info.get('previousClose', price)
+        prev_close = info.get('previousClose') or info.get('regularMarketPreviousClose', price)
         change = price - prev_close if price and prev_close else 0
         change_pct = (change / prev_close * 100) if prev_close else 0
         
@@ -130,15 +145,25 @@ class handler(BaseHTTPRequestHandler):
         }
 
     def build_income(self, stock):
+        """Build full income statement with all fields."""
         annual_reports = []
         try:
-            income_stmt = stock.income_stmt
-            if income_stmt is not None and not income_stmt.empty:
-                for col in income_stmt.columns[:4]:
+            income_df = stock.income_stmt
+            if income_df is not None and not income_df.empty:
+                for col in income_df.columns:
+                    def safe_get(key):
+                        try:
+                            return str(income_df.loc[key, col])
+                        except:
+                            return '0'
+                    
                     report = {
                         'fiscalDateEnding': col.strftime('%Y-%m-%d') if hasattr(col, 'strftime') else str(col),
-                        'totalRevenue': str(income_stmt.loc['Total Revenue', col]) if 'Total Revenue' in income_stmt.index else '0',
-                        'netIncome': str(income_stmt.loc['Net Income', col]) if 'Net Income' in income_stmt.index else '0',
+                        'totalRevenue': safe_get('Total Revenue'),
+                        'grossProfit': safe_get('Gross Profit'),
+                        'operatingIncome': safe_get('Operating Income'),
+                        'netIncome': safe_get('Net Income'),
+                        'ebitda': safe_get('EBITDA'),
                     }
                     annual_reports.append(report)
         except Exception as e:
@@ -146,7 +171,44 @@ class handler(BaseHTTPRequestHandler):
         
         return {'annualReports': annual_reports}
 
+    def build_balance_sheet(self, stock):
+        """Build balance sheet data."""
+        annual_reports = []
+        try:
+            bs_df = stock.balance_sheet
+            if bs_df is not None and not bs_df.empty:
+                for col in bs_df.columns:
+                    def safe_get(key):
+                        try:
+                            return str(bs_df.loc[key, col])
+                        except:
+                            return '0'
+                    
+                    # Try multiple possible key names
+                    total_liabilities = '0'
+                    for key in ['Total Liabilities Net Minority Interest', 'Total Liabilities']:
+                        try:
+                            total_liabilities = str(bs_df.loc[key, col])
+                            break
+                        except:
+                            continue
+                    
+                    report = {
+                        'fiscalDateEnding': col.strftime('%Y-%m-%d') if hasattr(col, 'strftime') else str(col),
+                        'totalAssets': safe_get('Total Assets'),
+                        'totalLiabilities': total_liabilities,
+                        'totalShareholderEquity': safe_get('Stockholders Equity'),
+                        'shortTermDebt': safe_get('Current Debt'),
+                        'longTermDebt': safe_get('Long Term Debt'),
+                    }
+                    annual_reports.append(report)
+        except Exception as e:
+            print(f"[yfinance] Balance sheet error: {e}")
+        
+        return {'annualReports': annual_reports}
+
     def build_history(self, stock):
+        """Build monthly price history."""
         monthly_data = {}
         try:
             hist = stock.history(period='max', interval='1mo')
@@ -165,6 +227,18 @@ class handler(BaseHTTPRequestHandler):
             print(f"[yfinance] History error: {e}")
         
         return {'Monthly Adjusted Time Series': monthly_data}
+
+    def build_analyst(self, info):
+        """Extract analyst data in native yfinance format."""
+        return {
+            'recommendationKey': info.get('recommendationKey', 'none'),
+            'recommendationMean': info.get('recommendationMean'),
+            'targetMeanPrice': info.get('targetMeanPrice'),
+            'targetHighPrice': info.get('targetHighPrice'),
+            'targetLowPrice': info.get('targetLowPrice'),
+            'targetMedianPrice': info.get('targetMedianPrice'),
+            'numberOfAnalystOpinions': info.get('numberOfAnalystOpinions', 0),
+        }
 
     def get_exchange_rate(self):
         try:
