@@ -1352,22 +1352,45 @@
 
             // Add Suggested Projections card if projections exist
             if (projections && !isUser) {
-                const bull = projections.bull || {};
-                const base = projections.base || {};
-                const bear = projections.bear || {};
-
                 const projCard = document.createElement('div');
                 projCard.className = 'mt-3 bg-indigo-50 rounded-lg p-3 border border-indigo-100';
-                projCard.innerHTML = `
-                    <div class="font-bold text-indigo-700 text-xs mb-2 flex items-center gap-1">
-                        <i data-lucide="sparkles" class="w-3 h-3"></i> Suggested Projections:
-                    </div>
-                    <div class="space-y-1 text-xs">
-                        <div>Revenue: <span class="text-green-600 font-bold">${bull.revenueGrowth || 0}%</span> / <span class="text-amber-600 font-bold">${base.revenueGrowth || 0}%</span> / <span class="text-red-600 font-bold">${bear.revenueGrowth || 0}%</span></div>
-                        <div>PAT: <span class="text-green-600 font-bold">${bull.patGrowth || 0}%</span> / <span class="text-amber-600 font-bold">${base.patGrowth || 0}%</span> / <span class="text-red-600 font-bold">${bear.patGrowth || 0}%</span></div>
-                        <div>Target PE: <span class="text-green-600 font-bold">${bull.targetPE || 0}</span> / <span class="text-amber-600 font-bold">${base.targetPE || 0}</span> / <span class="text-red-600 font-bold">${bear.targetPE || 0}</span></div>
-                    </div>
-                `;
+
+                // Check if year-by-year format or simple format
+                if (projections.years && projections.years.length > 0) {
+                    // Year-by-year format
+                    const yrs = projections.years;
+                    const tpe = projections.target_pe || {};
+                    let yearsHtml = yrs.slice(0, 3).map(y => {
+                        const r = y.revenue || {};
+                        const p = y.pat || {};
+                        return `<div class="text-xs">Y${y.year}: Rev ${r.bull || 0}/${r.base || 0}/${r.bear || 0}%, PAT ${p.bull || 0}/${p.base || 0}/${p.bear || 0}%</div>`;
+                    }).join('');
+                    if (yrs.length > 3) yearsHtml += `<div class="text-xs text-gray-500">...and ${yrs.length - 3} more years</div>`;
+
+                    projCard.innerHTML = `
+                        <div class="font-bold text-indigo-700 text-xs mb-2 flex items-center gap-1">
+                            <i data-lucide="sparkles" class="w-3 h-3"></i> Year-by-Year Projections:
+                        </div>
+                        <div class="space-y-1">${yearsHtml}</div>
+                        <div class="text-xs mt-2">Target PE: <span class="text-green-600 font-bold">${tpe.bull || 0}</span> / <span class="text-amber-600 font-bold">${tpe.base || 0}</span> / <span class="text-red-600 font-bold">${tpe.bear || 0}</span></div>
+                    `;
+                } else {
+                    // Simple format
+                    const bull = projections.bull || {};
+                    const base = projections.base || {};
+                    const bear = projections.bear || {};
+
+                    projCard.innerHTML = `
+                        <div class="font-bold text-indigo-700 text-xs mb-2 flex items-center gap-1">
+                            <i data-lucide="sparkles" class="w-3 h-3"></i> Suggested Projections:
+                        </div>
+                        <div class="space-y-1 text-xs">
+                            <div>Revenue: <span class="text-green-600 font-bold">${bull.revenueGrowth || 0}%</span> / <span class="text-amber-600 font-bold">${base.revenueGrowth || 0}%</span> / <span class="text-red-600 font-bold">${bear.revenueGrowth || 0}%</span></div>
+                            <div>PAT: <span class="text-green-600 font-bold">${bull.patGrowth || 0}%</span> / <span class="text-amber-600 font-bold">${base.patGrowth || 0}%</span> / <span class="text-red-600 font-bold">${bear.patGrowth || 0}%</span></div>
+                            <div>Target PE: <span class="text-green-600 font-bold">${bull.targetPE || 0}</span> / <span class="text-amber-600 font-bold">${base.targetPE || 0}</span> / <span class="text-red-600 font-bold">${bear.targetPE || 0}</span></div>
+                        </div>
+                    `;
+                }
                 msgDiv.appendChild(projCard);
 
                 // Auto-apply projections
@@ -2244,7 +2267,16 @@
             set('val-peg', ov.PEGRatio);
             set('val-pb', ov.PriceToBookRatio);
             set('val-bv', formatPrice(ov.BookValue));
-            set('val-ps', ov.PriceToSalesRatioTTM);
+            // P/S Ratio - calculate if not available
+            let psRatio = ov.PriceToSalesRatioTTM;
+            if (!psRatio || psRatio === 'None') {
+                const marketCap = parseFloat(ov.MarketCapitalization);
+                const revenueTTM = parseFloat(ov.RevenueTTM);
+                if (marketCap && revenueTTM && revenueTTM > 0) {
+                    psRatio = (marketCap / revenueTTM).toFixed(2);
+                }
+            }
+            set('val-ps', psRatio);
             set('val-ev-rev', ov.EVToRevenue);
             set('val-ev-ebitda', ov.EVToEBITDA);
             set('val-ebitda', formatCurrency(ov.EBITDA, true));
