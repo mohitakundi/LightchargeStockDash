@@ -3195,7 +3195,12 @@
             const tbody = document.getElementById('financial-table-body');
             tbody.innerHTML = '';
 
-            if (!data || data.length === 0) return;
+            if (!data || !Array.isArray(data) || data.length === 0) {
+                // Hide expand button if no data
+                const btn = document.getElementById('expand-financials-btn');
+                if (btn) btn.classList.add('hidden');
+                return;
+            }
 
             // Limit based on expanded state
             const limit = isFinancialsExpanded ? data.length : Math.min(data.length, 5);

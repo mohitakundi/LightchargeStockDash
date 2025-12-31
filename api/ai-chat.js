@@ -35,7 +35,7 @@ export default async function handler(request) {
     try {
         const body = await request.json();
         const ticker = (body.ticker || '').toUpperCase().trim();
-        const question = body.question || '';
+        const question = body.question || body.message || '';  // Accept both 'question' and 'message'
         const history = body.history || [];
 
         if (!ticker || !question) {
