@@ -144,6 +144,47 @@
                 </table>
             </div>
         </div>
+
+        <!-- Exchange Rate Management -->
+        <div class="bg-white p-6 rounded-lg shadow mb-6">
+            <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
+                <i data-lucide="trending-up" class="w-5 h-5 text-green-600"></i>
+                Historical Exchange Rates (USD/INR)
+            </h2>
+            <p class="text-sm text-gray-500 mb-4">
+                Fixer.io historical rates for accurate USD conversion of Indian stock charts.
+            </p>
+
+            <!-- Status -->
+            <div id="exchange-status" class="bg-gray-50 p-3 rounded-lg mb-4 text-sm">
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Total Rates Cached:</span>
+                    <span id="total-rates" class="font-bold">-</span>
+                </div>
+                <div class="flex justify-between mt-1">
+                    <span class="text-gray-600">Date Range:</span>
+                    <span id="rate-range" class="font-bold">-</span>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex flex-wrap gap-2">
+                <button onclick="backfillYearly()"
+                    class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-indigo-700 flex items-center gap-2">
+                    <i data-lucide="calendar" class="w-4 h-4"></i>
+                    Backfill Yearly (~26 calls)
+                </button>
+                <select id="monthly-year" class="border rounded-lg px-3 py-2 text-sm">
+                    <option value="">Select Year</option>
+                </select>
+                <button onclick="backfillMonthly()"
+                    class="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-blue-700 flex items-center gap-2">
+                    <i data-lucide="calendar-range" class="w-4 h-4"></i>
+                    Fill Monthly (12 calls)
+                </button>
+            </div>
+            <p id="exchange-result" class="text-sm mt-3 hidden"></p>
+        </div>
     </div>
 
     <style>
@@ -329,6 +370,113 @@
 
         loadTickers();
         updateStatus();
+        // --- EXCHANGE RATE MANAGEMENT ---
+        async function loadExchangeStatus() {
+            try {
+                const res = await fetch('/api/exchange-history', {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ mode: 'status' })
+                });
+                const data = await res.json();
+                
+                document.getElementById('total-rates').textContent = data.totalRates || 0;
+                
+                if (data.oldestDate && data.newestDate) {
+                    document.getElementById('rate-range').textContent = `${data.oldestDate} to ${data.newestDate}`;
+                } else {
+                    document.getElementById('rate-range').textContent = 'No data';
+                }
+            } catch (e) {
+                console.error('Failed to load exchange status', e);
+            }
+        }
+
+        async function backfillYearly() {
+            const btn = event.currentTarget;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Processing...';
+            btn.disabled = true;
+            
+            try {
+                const res = await fetch('/api/exchange-history', {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ mode: 'yearly' })
+                });
+                const data = await res.json();
+                
+                const resultEl = document.getElementById('exchange-result');
+                resultEl.classList.remove('hidden', 'text-red-500', 'text-green-600');
+                
+                if (res.ok) {
+                    resultEl.classList.add('text-green-600');
+                    resultEl.innerHTML = `✅ ${data.message} (Success: ${data.success}, Failed: ${data.failed}, Skipped: ${data.skipped})`;
+                    loadExchangeStatus();
+                } else {
+                    resultEl.classList.add('text-red-500');
+                    resultEl.textContent = `❌ Error: ${data.error}`;
+                }
+            } catch (e) {
+                document.getElementById('exchange-result').textContent = `❌ Network Error: ${e.message}`;
+            }
+            
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+
+        async function backfillMonthly() {
+            const yearSelect = document.getElementById('monthly-year');
+            const year = yearSelect.value;
+            
+            if (!year) {
+                alert('Please select a year first');
+                return;
+            }
+            
+            const btn = event.currentTarget;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Processing...';
+            btn.disabled = true;
+            
+            try {
+                const res = await fetch('/api/exchange-history', {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ mode: 'monthly', year: parseInt(year) })
+                });
+                const data = await res.json();
+                
+                const resultEl = document.getElementById('exchange-result');
+                resultEl.classList.remove('hidden', 'text-red-500', 'text-green-600');
+                
+                if (res.ok) {
+                    resultEl.classList.add('text-green-600');
+                    resultEl.innerHTML = `✅ ${data.message} (Success: ${data.success}, Failed: ${data.failed}, Skipped: ${data.skipped})`;
+                    loadExchangeStatus();
+                } else {
+                    resultEl.classList.add('text-red-500');
+                    resultEl.textContent = `❌ Error: ${data.error}`;
+                }
+            } catch (e) {
+                document.getElementById('exchange-result').textContent = `❌ Network Error: ${e.message}`;
+            }
+            
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+
+        // Initialize Year Dropdown
+        const yearSelect = document.getElementById('monthly-year');
+        const currentYear = new Date().getFullYear();
+        for (let y = currentYear; y >= 1999; y--) {
+            const opt = document.createElement('option');
+            opt.value = y;
+            opt.textContent = y;
+            yearSelect.appendChild(opt);
+        }
+
+        loadExchangeStatus(); // Load initial status
     </script>
 </body>
 
