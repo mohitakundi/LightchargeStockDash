@@ -12,8 +12,6 @@
     <!-- D3.js for Sankey chart -->
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/d3-sankey@0.12.3/dist/d3-sankey.min.js"></script>
-    <!-- TradingView Lightweight Charts -->
-    <script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -2795,7 +2793,6 @@
 
         // --- TRADINGVIEW CHART TOGGLE ---
         let currentChartType = 'apex';
-        let tvChartInstance = null;
         let currentChartData = []; // Store data for switching
 
         function setChartType(type) {
@@ -2831,82 +2828,66 @@
             const container = document.getElementById('tv-chart');
             if (!container) return;
 
-            // Clear previous chart
+            // Clear previous widget
             container.innerHTML = '';
 
-            if (!data || data.length === 0) {
-                container.innerHTML = '<div class="flex items-center justify-center h-full text-gray-400">No data available</div>';
-                return;
+            // Get current ticker symbol
+            let ticker = document.getElementById('ticker').value.trim().toUpperCase() ||
+                document.getElementById('company-ticker')?.textContent || 'AAPL';
+
+            // Convert ticker format for TradingView
+            // Indian stocks: TITAN.NS -> NSE:TITAN
+            // US stocks: AAPL -> NASDAQ:AAPL or NYSE:...
+            let tvSymbol = ticker;
+            if (ticker.endsWith('.NS')) {
+                tvSymbol = 'NSE:' + ticker.replace('.NS', '');
+            } else if (ticker.endsWith('.BO')) {
+                tvSymbol = 'BSE:' + ticker.replace('.BO', '');
+            } else {
+                // For US stocks, TradingView auto-resolves, but we can help
+                // Common US exchanges
+                tvSymbol = ticker; // TradingView will auto-resolve
             }
 
-            try {
-                // Create chart
-                tvChartInstance = LightweightCharts.createChart(container, {
-                    width: container.clientWidth,
-                    height: 400,
-                    layout: {
-                        background: { type: 'solid', color: '#ffffff' },
-                        textColor: '#333333',
-                    },
-                    grid: {
-                        vertLines: { color: '#f0f0f0' },
-                        horzLines: { color: '#f0f0f0' },
-                    },
-                    crosshair: {
-                        mode: LightweightCharts.CrosshairMode.Normal,
-                    },
-                    rightPriceScale: {
-                        borderColor: '#cccccc',
-                    },
-                    timeScale: {
-                        borderColor: '#cccccc',
-                        timeVisible: true,
-                        secondsVisible: false,
-                    },
-                });
+            // Create TradingView Widget container
+            const widgetContainer = document.createElement('div');
+            widgetContainer.className = 'tradingview-widget-container';
+            widgetContainer.style.height = '100%';
+            widgetContainer.style.width = '100%';
 
-                // Convert data to TradingView format (candlestick if OHLC available, otherwise line)
-                const tvData = data.map(point => {
-                    const timestamp = new Date(point.x).getTime() / 1000;
-                    return {
-                        time: timestamp,
-                        value: point.y,
-                    };
-                }).sort((a, b) => a.time - b.time);
+            const widgetDiv = document.createElement('div');
+            widgetDiv.className = 'tradingview-widget-container__widget';
+            widgetDiv.style.height = 'calc(100% - 32px)';
+            widgetDiv.style.width = '100%';
+            widgetContainer.appendChild(widgetDiv);
 
-                // Add area series (similar to ApexCharts area chart)
-                const areaSeries = tvChartInstance.addAreaSeries({
-                    lineColor: '#4f46e5',
-                    topColor: 'rgba(79, 70, 229, 0.4)',
-                    bottomColor: 'rgba(79, 70, 229, 0.05)',
-                    lineWidth: 2,
-                });
+            // Attribution (required)
+            const copyright = document.createElement('div');
+            copyright.className = 'tradingview-widget-copyright';
+            copyright.innerHTML = '<a href="https://www.tradingview.com/" rel="noopener nofollow" target="_blank"><span class="text-xs text-gray-400">Track all markets on TradingView</span></a>';
+            widgetContainer.appendChild(copyright);
 
-                areaSeries.setData(tvData);
+            container.appendChild(widgetContainer);
 
-                // Fit content
-                tvChartInstance.timeScale().fitContent();
+            // Add TradingView Widget Script
+            const script = document.createElement('script');
+            script.type = 'text/javascript';
+            script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
+            script.async = true;
+            script.innerHTML = JSON.stringify({
+                "autosize": true,
+                "symbol": tvSymbol,
+                "interval": "D",
+                "timezone": "Etc/UTC",
+                "theme": "light",
+                "style": "1", // Candlesticks
+                "locale": "en",
+                "allow_symbol_change": true,
+                "calendar": false,
+                "support_host": "https://www.tradingview.com"
+            });
 
-                // Handle resize
-                const resizeObserver = new ResizeObserver(entries => {
-                    if (entries[0] && tvChartInstance) {
-                        tvChartInstance.applyOptions({
-                            width: entries[0].contentRect.width,
-                        });
-                    }
-                });
-                resizeObserver.observe(container);
-
-                // Add TradingView attribution (required by license)
-                const attribution = document.createElement('div');
-                attribution.className = 'text-xs text-gray-400 text-right mt-1';
-                attribution.innerHTML = 'Powered by <a href="https://www.tradingview.com/lightweight-charts/" target="_blank" class="text-indigo-500 hover:underline">TradingView Lightweight Charts</a>';
-                container.appendChild(attribution);
-
-            } catch (e) {
-                console.error('TradingView chart error:', e);
-                container.innerHTML = '<div class="flex items-center justify-center h-full text-red-400">Failed to load TradingView chart</div>';
-            }
+            widgetContainer.appendChild(script);
         }
 
         // Override original renderPriceChart to store data for toggle
