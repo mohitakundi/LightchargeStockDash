@@ -894,34 +894,7 @@
                     </div>
                 </div>
             </div>
-            <!-- 5. Latest Quarter Section (NEW) -->
-            <div class="card p-4 sm:p-6">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
-                        <i data-lucide="calendar" class="w-5 h-5 text-indigo-600"></i>
-                        Latest Quarter
-                    </h3>
-                    <span id="latest-quarter-date" class="text-sm text-gray-500 font-mono"></span>
-                </div>
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div class="bg-blue-50 rounded-lg p-3">
-                        <p class="text-xs text-blue-600 font-medium">Revenue</p>
-                        <p id="lq-revenue" class="text-lg font-bold text-blue-700">-</p>
-                    </div>
-                    <div class="bg-green-50 rounded-lg p-3">
-                        <p class="text-xs text-green-600 font-medium">Gross Profit</p>
-                        <p id="lq-gross-profit" class="text-lg font-bold text-green-700">-</p>
-                    </div>
-                    <div class="bg-amber-50 rounded-lg p-3">
-                        <p class="text-xs text-amber-600 font-medium">Operating Income</p>
-                        <p id="lq-operating-income" class="text-lg font-bold text-amber-700">-</p>
-                    </div>
-                    <div class="bg-purple-50 rounded-lg p-3">
-                        <p class="text-xs text-purple-600 font-medium">Net Income</p>
-                        <p id="lq-net-income" class="text-lg font-bold text-purple-700">-</p>
-                    </div>
-                </div>
-            </div>
+
 
             <!-- 6. Ownership & Float Section (NEW) -->
             <div class="card p-4 sm:p-6">
@@ -982,10 +955,16 @@
 
             <!-- 8. Balance Sheet Analysis (NEW) -->
             <div class="card p-4 sm:p-6">
-                <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2 mb-4">
-                    <i data-lucide="scale" class="w-5 h-5 text-indigo-600"></i>
-                    Balance Sheet Analysis
-                </h3>
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
+                        <i data-lucide="scale" class="w-5 h-5 text-indigo-600"></i>
+                        Balance Sheet Analysis
+                    </h3>
+                    <div class="flex bg-gray-100 rounded-lg p-1">
+                        <button id="bs-annual-btn" class="px-3 py-1 text-xs font-medium rounded-md bg-white text-indigo-600 shadow-sm transition">Annual</button>
+                        <button id="bs-quarterly-btn" class="px-3 py-1 text-xs font-medium rounded-md text-gray-500 hover:text-gray-700 transition">Quarterly</button>
+                    </div>
+                </div>
                 <div id="balance-sheet-chart">
                     <div class="flex items-center justify-center h-64 bg-gray-50 rounded-lg text-gray-400">
                         <i data-lucide="loader" class="w-6 h-6 animate-spin mr-2"></i> Loading Balance Sheet...
@@ -993,12 +972,18 @@
                 </div>
             </div>
 
-            <!-- 9. Annual Reports -->
+            <!-- 9. Financial Reports -->
             <div class="card">
                 <div class="p-4 border-b bg-gray-50 flex flex-wrap justify-between items-center gap-2">
-                    <h3 class="font-bold text-gray-700">Financial Reports (Annual)</h3>
+                    <div class="flex items-center gap-4">
+                        <h3 class="font-bold text-gray-700">Financial Reports</h3>
+                        <div class="flex bg-gray-200 rounded-lg p-1">
+                            <button id="fin-annual-btn" class="px-3 py-1 text-xs font-medium rounded-md bg-white text-indigo-600 shadow-sm transition">Annual</button>
+                            <button id="fin-quarterly-btn" class="px-3 py-1 text-xs font-medium rounded-md text-gray-500 hover:text-gray-700 transition">Quarterly</button>
+                        </div>
+                    </div>
                     <div class="flex items-center gap-4 text-xs text-gray-500">
-                        <span>Fiscal Year End: <strong id="fiscal-year-end" class="text-gray-700">-</strong></span>
+                        <span>Date Range: <strong id="fiscal-year-end" class="text-gray-700">-</strong></span>
                         <span>Source: Local Data</span>
                     </div>
                 </div>
@@ -1201,6 +1186,8 @@
         // Financials State
         let currentFinancialReports = [];
         let isFinancialsExpanded = false;
+        let financialsMode = 'annual'; // 'annual' or 'quarterly'
+        let balanceSheetMode = 'annual'; // 'annual' or 'quarterly'
 
         // Calculator State
         let calcMode = 'simple'; // 'simple' | 'complex'
@@ -1393,7 +1380,6 @@
             populateOverview(currentStockData.overview, currentStockData.quote['Global Quote']);
             populateFundamentals(currentStockData.overview, currentStockData.quote['Global Quote']);
             populateOwnership(currentStockData.overview);
-            populateLatestQuarter(currentStockData.income, currentStockData.overview);
             populateEarningsBreakdown(currentStockData.income);
             populateCalculator(currentStockData);
 
@@ -2323,15 +2309,13 @@
             lucide.createIcons();
 
             try {
-                const res = await fetch('/api/refresh-ticker', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ ticker })
-                });
+                const res = await fetch(`/api/quick-refresh?ticker=${encodeURIComponent(ticker)}`);
                 const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Refresh failed');
                 alert(data.message || data.error);
+                loadData(); // Refresh the UI with the newly fetched data
             } catch (e) {
-                alert('Refresh failed. Try again later.');
+                alert(e.message || 'Refresh failed. Try again later.');
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = originalHTML;
@@ -2405,7 +2389,6 @@
 
                 // Populate new sections
                 populateOwnership(data.overview);
-                populateLatestQuarter(data.income, data.overview);
                 populateEarningsBreakdown(data.income);
                 renderBalanceSheetChart(data.balance_sheet);
 
@@ -2680,20 +2663,6 @@
             }
         }
 
-        function populateLatestQuarter(income, ov) {
-            // Set latest quarter date
-            set('latest-quarter-date', ov.LatestQuarter || '-');
-
-            // Get latest quarterly report
-            const qReports = income?.quarterlyReports;
-            if (!qReports || qReports.length === 0) return;
-
-            const latest = qReports[0];
-            set('lq-revenue', formatCurrency(latest.totalRevenue, true));
-            set('lq-gross-profit', formatCurrency(latest.grossProfit, true));
-            set('lq-operating-income', formatCurrency(latest.operatingIncome, true));
-            set('lq-net-income', formatCurrency(latest.netIncome, true));
-        }
 
         function populateEarningsBreakdown(income) {
             // Get latest annual report for breakdown
@@ -4075,15 +4044,52 @@
         // END OF VALUATION GAUGE AND FAIR VALUE BAR
         // =============================================
 
+        // Listen for Financials Toggle
+        document.getElementById('fin-annual-btn').addEventListener('click', (e) => {
+            financialsMode = 'annual';
+            e.target.classList.replace('text-gray-500', 'text-indigo-600');
+            e.target.classList.replace('hover:text-gray-700', 'bg-white');
+            e.target.classList.add('shadow-sm');
+            
+            const otherBtn = document.getElementById('fin-quarterly-btn');
+            otherBtn.classList.replace('text-indigo-600', 'text-gray-500');
+            otherBtn.classList.replace('bg-white', 'hover:text-gray-700');
+            otherBtn.classList.remove('shadow-sm');
+            
+            renderFinancialTable();
+        });
+        
+        document.getElementById('fin-quarterly-btn').addEventListener('click', (e) => {
+            financialsMode = 'quarterly';
+            e.target.classList.replace('text-gray-500', 'text-indigo-600');
+            e.target.classList.replace('hover:text-gray-700', 'bg-white');
+            e.target.classList.add('shadow-sm');
+            
+            const otherBtn = document.getElementById('fin-annual-btn');
+            otherBtn.classList.replace('text-indigo-600', 'text-gray-500');
+            otherBtn.classList.replace('bg-white', 'hover:text-gray-700');
+            otherBtn.classList.remove('shadow-sm');
+            
+            renderFinancialTable();
+        });
+
         // Listen for expand button click
         document.getElementById('expand-financials-btn').addEventListener('click', () => {
             isFinancialsExpanded = !isFinancialsExpanded;
             renderFinancialTable(); // Re-render with current reports
         });
 
-        function renderFinancialTable(reports) {
-            if (reports) currentFinancialReports = reports; // Update cache if new data provided
-            const data = currentFinancialReports;
+        function renderFinancialTable() {
+            if (!currentStockData || !currentStockData.income) return;
+            
+            let data = currentFinancialReports;
+            if (financialsMode === 'annual') {
+                data = currentStockData.income.annualReports || [];
+            } else {
+                data = currentStockData.income.quarterlyReports || [];
+            }
+            
+            currentFinancialReports = data; // Update cache
 
             const tbody = document.getElementById('financial-table-body');
             tbody.innerHTML = '';
@@ -4092,6 +4098,7 @@
                 // Hide expand button if no data
                 const btn = document.getElementById('expand-financials-btn');
                 if (btn) btn.classList.add('hidden');
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-gray-500">No data available for this mode</td></tr>';
                 return;
             }
 
@@ -4102,8 +4109,9 @@
             const btn = document.getElementById('expand-financials-btn');
             if (data.length <= 5) { btn.classList.add('hidden'); } else {
                 btn.classList.remove('hidden');
+                const label = financialsMode === 'annual' ? 'Years' : 'Quarters';
                 btn.innerHTML = isFinancialsExpanded ? `<i data-lucide="chevron-up" class="w-4 h-4"></i> Show Less`
-                    : `<i data-lucide="chevron-down" class="w-4 h-4"></i> Show Full History (${data.length} Years)`;
+                    : `<i data-lucide="chevron-down" class="w-4 h-4"></i> Show Full History (${data.length} ${label})`;
                 lucide.createIcons(); // Refresh icons inside button
             }
 
@@ -4146,19 +4154,63 @@
         // --- BALANCE SHEET CHART ---
         let balanceSheetChartInstance = null;
 
+        // Listen for Balance Sheet Toggle
+        document.getElementById('bs-annual-btn').addEventListener('click', (e) => {
+            balanceSheetMode = 'annual';
+            e.target.classList.replace('text-gray-500', 'text-indigo-600');
+            e.target.classList.replace('hover:text-gray-700', 'bg-white');
+            e.target.classList.add('shadow-sm');
+            
+            const otherBtn = document.getElementById('bs-quarterly-btn');
+            otherBtn.classList.replace('text-indigo-600', 'text-gray-500');
+            otherBtn.classList.replace('bg-white', 'hover:text-gray-700');
+            otherBtn.classList.remove('shadow-sm');
+            
+            if (currentStockData && currentStockData.balance_sheet) {
+                renderBalanceSheetChart(currentStockData.balance_sheet);
+            }
+        });
+        
+        document.getElementById('bs-quarterly-btn').addEventListener('click', (e) => {
+            balanceSheetMode = 'quarterly';
+            e.target.classList.replace('text-gray-500', 'text-indigo-600');
+            e.target.classList.replace('hover:text-gray-700', 'bg-white');
+            e.target.classList.add('shadow-sm');
+            
+            const otherBtn = document.getElementById('bs-annual-btn');
+            otherBtn.classList.replace('text-indigo-600', 'text-gray-500');
+            otherBtn.classList.replace('bg-white', 'hover:text-gray-700');
+            otherBtn.classList.remove('shadow-sm');
+            
+            if (currentStockData && currentStockData.balance_sheet) {
+                renderBalanceSheetChart(currentStockData.balance_sheet);
+            }
+        });
+
         function renderBalanceSheetChart(balanceSheet) {
             const chartDiv = document.getElementById('balance-sheet-chart');
+            
+            let data = [];
+            if (balanceSheetMode === 'annual') {
+                data = balanceSheet?.annualReports || [];
+            } else {
+                data = balanceSheet?.quarterlyReports || [];
+            }
+            
             // Check for valid data
-            if (!balanceSheet || !balanceSheet.annualReports || balanceSheet.annualReports.length === 0) {
-                chartDiv.innerHTML = '<div class="flex items-center justify-center h-64 bg-gray-50 rounded-lg text-gray-400">No balance sheet data available</div>';
+            if (!data || data.length === 0) {
+                chartDiv.innerHTML = '<div class="flex items-center justify-center h-64 bg-gray-50 rounded-lg text-gray-400">No balance sheet data available for this mode</div>';
                 return;
             }
 
             // Process data (sort chronological)
-            const reports = [...balanceSheet.annualReports].reverse();
+            const reports = [...data].reverse();
 
             // Extract series
-            const years = reports.map(r => r.fiscalDateEnding.split('-')[0]); // Just the year
+            const labels = reports.map(r => {
+                const parts = r.fiscalDateEnding.split('-');
+                return balanceSheetMode === 'annual' ? parts[0] : `${parts[0]} Q${Math.ceil(parseInt(parts[1])/3)}`;
+            });
             const assets = reports.map(r => parseFloat(r.totalAssets) || 0);
             const liabilities = reports.map(r => parseFloat(r.totalLiabilities) || 0);
 
@@ -4205,7 +4257,7 @@
                 },
                 dataLabels: { enabled: false },
                 stroke: { show: true, width: 2, colors: ['transparent'] },
-                xaxis: { categories: years },
+                xaxis: { categories: labels },
                 yaxis: {
                     title: { text: isIndian && currencyMode === 'native' ? 'Amount (₹)' : 'Amount ($)' }
                 },

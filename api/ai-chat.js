@@ -122,9 +122,9 @@ ${stockContext}
 
 USER QUESTION: ${question}`;
 
-        // Use the new @google/genai SDK with gemma-3-27b-it model
+        // Use the new @google/genai SDK with gemini-3.1-flash-lite model
         const response = await ai.models.generateContent({
-            model: 'gemma-3-27b-it',
+            model: 'gemini-3.1-flash-lite',
             contents: prompt
         });
 

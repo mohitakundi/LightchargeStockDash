@@ -160,17 +160,15 @@ class handler(BaseHTTPRequestHandler):
 
     def build_income(self, stock):
         """Build full income statement with all fields."""
-        annual_reports = []
-        try:
-            income_df = stock.income_stmt
-            if income_df is not None and not income_df.empty:
-                for col in income_df.columns:
+        def process_df(df):
+            reports = []
+            if df is not None and not df.empty:
+                for col in df.columns:
                     def safe_get(key):
                         try:
-                            return str(income_df.loc[key, col])
+                            return str(df.loc[key, col])
                         except:
                             return '0'
-                    
                     report = {
                         'fiscalDateEnding': col.strftime('%Y-%m-%d') if hasattr(col, 'strftime') else str(col),
                         'totalRevenue': safe_get('Total Revenue'),
@@ -179,30 +177,35 @@ class handler(BaseHTTPRequestHandler):
                         'netIncome': safe_get('Net Income'),
                         'ebitda': safe_get('EBITDA'),
                     }
-                    annual_reports.append(report)
+                    reports.append(report)
+            return reports
+
+        annual_reports = []
+        quarterly_reports = []
+        try:
+            annual_reports = process_df(stock.income_stmt)
+            quarterly_reports = process_df(stock.quarterly_income_stmt)
         except Exception as e:
             print(f"[yfinance] Income statement error: {e}")
         
-        return {'annualReports': annual_reports}
+        return {'annualReports': annual_reports, 'quarterlyReports': quarterly_reports}
 
     def build_balance_sheet(self, stock):
         """Build balance sheet data."""
-        annual_reports = []
-        try:
-            bs_df = stock.balance_sheet
-            if bs_df is not None and not bs_df.empty:
-                for col in bs_df.columns:
+        def process_df(df):
+            reports = []
+            if df is not None and not df.empty:
+                for col in df.columns:
                     def safe_get(key):
                         try:
-                            return str(bs_df.loc[key, col])
+                            return str(df.loc[key, col])
                         except:
                             return '0'
                     
-                    # Try multiple possible key names
                     total_liabilities = '0'
                     for key in ['Total Liabilities Net Minority Interest', 'Total Liabilities']:
                         try:
-                            total_liabilities = str(bs_df.loc[key, col])
+                            total_liabilities = str(df.loc[key, col])
                             break
                         except:
                             continue
@@ -215,11 +218,18 @@ class handler(BaseHTTPRequestHandler):
                         'shortTermDebt': safe_get('Current Debt'),
                         'longTermDebt': safe_get('Long Term Debt'),
                     }
-                    annual_reports.append(report)
+                    reports.append(report)
+            return reports
+
+        annual_reports = []
+        quarterly_reports = []
+        try:
+            annual_reports = process_df(stock.balance_sheet)
+            quarterly_reports = process_df(stock.quarterly_balance_sheet)
         except Exception as e:
             print(f"[yfinance] Balance sheet error: {e}")
         
-        return {'annualReports': annual_reports}
+        return {'annualReports': annual_reports, 'quarterlyReports': quarterly_reports}
 
     def build_history(self, stock):
         """Build monthly price history."""

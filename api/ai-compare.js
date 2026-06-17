@@ -66,9 +66,9 @@ USER QUESTION: ${question}
 
 Provide a detailed comparison addressing the user's question. Use markdown formatting with headers, bullet points, and bold text for key insights. Be specific about which stock is better for what use case.`;
 
-        // Use the new @google/genai SDK with gemma-3-27b-it model
+        // Use the new @google/genai SDK with gemini-3.1-flash-lite model
         const response = await ai.models.generateContent({
-            model: 'gemma-3-27b-it',
+            model: 'gemini-3.1-flash-lite',
             contents: prompt
         });
 
