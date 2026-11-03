@@ -417,7 +417,43 @@
             <!-- 2. Chart -->
             <div class="card p-1 relative">
                 <div class="p-4 border-b flex flex-wrap gap-4 justify-between items-center bg-gray-50 rounded-t-lg">
-                    <h3 class="font-bold text-gray-700">Price Action</h3>
+                    <div class="flex items-center gap-3 flex-wrap">
+                        <h3 class="font-bold text-gray-700">Price Action</h3>
+                        <!-- Performance & Risk Metrics Strip -->
+                        <div id="chart-metrics-strip" class="flex items-center gap-2 flex-wrap text-xs">
+                            <!-- Max Drawdown Badge -->
+                            <div class="flex items-center gap-1.5 bg-white border border-gray-200 rounded-lg px-2.5 py-1 shadow-sm transition-all"
+                                id="metric-max-dd-container" title="Maximum peak-to-trough drop">
+                                <span class="text-gray-500 font-medium">Max DD:</span>
+                                <span id="metric-max-dd" class="font-bold font-mono text-rose-600">-</span>
+                            </div>
+
+                            <!-- Longest Period of No Return Badge -->
+                            <div class="flex items-center gap-1.5 bg-white border border-gray-200 rounded-lg px-2.5 py-1 shadow-sm transition-all"
+                                id="metric-no-return-container" title="Longest duration price stayed below a prior peak">
+                                <span class="text-gray-500 font-medium">Longest No Return:</span>
+                                <span id="metric-no-return" class="font-bold font-mono text-amber-600">-</span>
+                            </div>
+
+                            <!-- CAGR with Interactive Duration Selector -->
+                            <div class="flex items-center gap-1.5 bg-white border border-gray-200 rounded-lg pl-2.5 pr-1.5 py-0.5 shadow-sm transition-all"
+                                id="metric-cagr-container" title="Compound Annual Growth Rate">
+                                <span class="text-gray-500 font-medium">CAGR:</span>
+                                <select id="cagr-duration-select"
+                                    class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded px-1.5 py-0.5 border-0 focus:ring-1 focus:ring-indigo-500 cursor-pointer">
+                                    <option value="3M">3M</option>
+                                    <option value="6M">6M</option>
+                                    <option value="1Y">1Y</option>
+                                    <option value="2Y">2Y</option>
+                                    <option value="3Y">3Y</option>
+                                    <option value="5Y" selected>5Y</option>
+                                    <option value="10Y">10Y</option>
+                                    <option value="MAX">MAX</option>
+                                </select>
+                                <span id="metric-cagr" class="font-bold font-mono text-emerald-600 pr-1">-</span>
+                            </div>
+                        </div>
+                    </div>
                     <div class="flex gap-2 items-center flex-wrap">
                         <button id="measure-btn"
                             class="flex items-center gap-1 text-xs font-bold bg-white border px-3 py-1 rounded hover:bg-gray-50 text-gray-600 transition">
@@ -2681,6 +2717,270 @@
             set('eb-tax', formatCurrency(latest.incomeTaxExpense, true));
         }
 
+        // --- PRICE ACTION PERFORMANCE & RISK METRICS ---
+        let currentChartRange = '5Y';
+
+        // Returns the price history array converted to the currently selected currency (INR or USD)
+        function getActiveCurrencyHistory() {
+            if (!fullHistory || !fullHistory.length) return [];
+            const isIndian = (currentStockData && currentStockData.market === 'IN');
+            if (isIndian && currencyMode === 'usd') {
+                return fullHistory.map(d => ({
+                    x: d.x,
+                    y: d.y / getHistoricalRate(d.x)
+                }));
+            }
+            return fullHistory;
+        }
+
+        // Calculates peak-to-trough maximum drawdown
+        function calculateMaxDrawdown(series) {
+            if (!series || series.length < 2) return { maxDD: 0, peakDate: null, troughDate: null };
+            let peak = series[0].y;
+            let peakDate = series[0].x;
+            let maxDD = 0;
+            let bestPeakDate = series[0].x;
+            let bestTroughDate = series[0].x;
+
+            for (let i = 1; i < series.length; i++) {
+                const p = series[i].y;
+                const t = series[i].x;
+                if (p > peak) {
+                    peak = p;
+                    peakDate = t;
+                } else if (peak > 0) {
+                    const dd = (p - peak) / peak;
+                    if (dd < maxDD) {
+                        maxDD = dd;
+                        bestPeakDate = peakDate;
+                        bestTroughDate = t;
+                    }
+                }
+            }
+            return {
+                maxDD: maxDD * 100,
+                peakDate: bestPeakDate,
+                troughDate: bestTroughDate
+            };
+        }
+
+        // Calculates the longest period price remained below a previous peak (time underwater)
+        function calculateLongestNoReturn(series) {
+            if (!series || series.length < 2) return { durationMs: 0, days: 0, text: '-', startDate: null, endDate: null };
+            let longestMs = 0;
+            let bestStart = series[0].x;
+            let bestEnd = series[0].x;
+
+            for (let i = 0; i < series.length; i++) {
+                const tStart = series[i].x;
+                const pStart = series[i].y;
+                let recoveredTime = null;
+
+                for (let j = i + 1; j < series.length; j++) {
+                    if (series[j].y >= pStart) {
+                        recoveredTime = series[j].x;
+                        break;
+                    }
+                }
+                if (recoveredTime === null) {
+                    recoveredTime = series[series.length - 1].x;
+                }
+
+                const dur = recoveredTime - tStart;
+                if (dur > longestMs) {
+                    longestMs = dur;
+                    bestStart = tStart;
+                    bestEnd = recoveredTime;
+                }
+            }
+
+            const totalDays = Math.round(longestMs / (1000 * 86400));
+            let years = Math.floor(totalDays / 365.25);
+            let months = Math.round((totalDays % 365.25) / 30.4375);
+            if (months >= 12) {
+                years += 1;
+                months = 0;
+            }
+
+            let text = '';
+            if (years > 0 && months > 0) {
+                text = `${years}y ${months}m`;
+            } else if (years > 0) {
+                text = `${years}y`;
+            } else if (months > 0) {
+                text = `${months}m`;
+            } else {
+                text = `${totalDays}d`;
+            }
+
+            return {
+                durationMs: longestMs,
+                days: totalDays,
+                text,
+                startDate: bestStart,
+                endDate: bestEnd
+            };
+        }
+
+        // Calculates CAGR based on duration code (3M, 6M, 1Y, 2Y, 3Y, 5Y, 10Y, MAX)
+        function calculateCAGR(series, durationCode) {
+            if (!series || series.length < 2) return { cagr: null, text: 'N/A', isPositive: true };
+            const latest = series[series.length - 1];
+            const latestTime = latest.x;
+            const latestPrice = latest.y;
+
+            let targetStartTime;
+            const d = new Date(latestTime);
+
+            switch (durationCode) {
+                case '3M':
+                    d.setMonth(d.getMonth() - 3);
+                    targetStartTime = d.getTime();
+                    break;
+                case '6M':
+                    d.setMonth(d.getMonth() - 6);
+                    targetStartTime = d.getTime();
+                    break;
+                case '1Y':
+                    d.setFullYear(d.getFullYear() - 1);
+                    targetStartTime = d.getTime();
+                    break;
+                case '2Y':
+                    d.setFullYear(d.getFullYear() - 2);
+                    targetStartTime = d.getTime();
+                    break;
+                case '3Y':
+                    d.setFullYear(d.getFullYear() - 3);
+                    targetStartTime = d.getTime();
+                    break;
+                case '5Y':
+                    d.setFullYear(d.getFullYear() - 5);
+                    targetStartTime = d.getTime();
+                    break;
+                case '10Y':
+                    d.setFullYear(d.getFullYear() - 10);
+                    targetStartTime = d.getTime();
+                    break;
+                case 'MAX':
+                default:
+                    targetStartTime = series[0].x;
+                    break;
+            }
+
+            // Find closest data point to targetStartTime
+            let startPoint = series[0];
+            for (let i = 0; i < series.length; i++) {
+                if (series[i].x >= targetStartTime) {
+                    if (i > 0) {
+                        const diffPrev = Math.abs(series[i - 1].x - targetStartTime);
+                        const diffCurr = Math.abs(series[i].x - targetStartTime);
+                        startPoint = diffPrev <= diffCurr ? series[i - 1] : series[i];
+                    } else {
+                        startPoint = series[i];
+                    }
+                    break;
+                }
+            }
+
+            if (startPoint.x >= latestTime || startPoint.y <= 0 || latestPrice <= 0) {
+                return { cagr: 0, text: '0.0%', isPositive: true, years: '0.0', startDate: latestTime, endDate: latestTime, startPrice: latestPrice, latestPrice };
+            }
+
+            const years = (latestTime - startPoint.x) / (1000 * 86400 * 365.25);
+            if (years <= 0) {
+                return { cagr: 0, text: '0.0%', isPositive: true, years: '0.0', startDate: startPoint.x, endDate: latestTime, startPrice: startPoint.y, latestPrice };
+            }
+
+            const cagrVal = (Math.pow(latestPrice / startPoint.y, 1 / years) - 1) * 100;
+            const isPositive = cagrVal >= 0;
+            const sign = isPositive ? '+' : '';
+            const text = `${sign}${cagrVal.toFixed(1)}%`;
+
+            return {
+                cagr: cagrVal,
+                text,
+                isPositive,
+                years: years.toFixed(1),
+                startDate: startPoint.x,
+                endDate: latestTime,
+                startPrice: startPoint.y,
+                latestPrice: latestPrice
+            };
+        }
+
+        function formatDateShort(ts) {
+            if (!ts) return '';
+            const d = new Date(ts);
+            return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short' });
+        }
+
+        function updatePriceActionMetrics(currentRangeData) {
+            const fullCur = getActiveCurrencyHistory();
+            if (!fullCur.length) {
+                const ddEl = document.getElementById('metric-max-dd');
+                const nrEl = document.getElementById('metric-no-return');
+                const cagrEl = document.getElementById('metric-cagr');
+                if (ddEl) ddEl.textContent = '-';
+                if (nrEl) nrEl.textContent = '-';
+                if (cagrEl) cagrEl.textContent = '-';
+                return;
+            }
+
+            // 1. Max Drawdown
+            const rangeSeries = (currentRangeData && currentRangeData.length >= 2) ? currentRangeData : fullCur;
+            const ddRange = calculateMaxDrawdown(rangeSeries);
+            const ddAll = calculateMaxDrawdown(fullCur);
+
+            const ddEl = document.getElementById('metric-max-dd');
+            const ddContainer = document.getElementById('metric-max-dd-container');
+            if (ddEl && ddContainer) {
+                ddEl.textContent = `${ddRange.maxDD.toFixed(1)}%`;
+                ddContainer.title = `Period Max DD: ${ddRange.maxDD.toFixed(1)}% (${formatDateShort(ddRange.peakDate)} → ${formatDateShort(ddRange.troughDate)})\nAll-Time Max DD: ${ddAll.maxDD.toFixed(1)}% (${formatDateShort(ddAll.peakDate)} → ${formatDateShort(ddAll.troughDate)})`;
+            }
+
+            // 2. Longest Period of No Returns (Calculated across all-time history)
+            const nrAll = calculateLongestNoReturn(fullCur);
+            const nrEl = document.getElementById('metric-no-return');
+            const nrContainer = document.getElementById('metric-no-return-container');
+            if (nrEl && nrContainer) {
+                nrEl.textContent = nrAll.text;
+                nrContainer.title = `Longest Period of No Returns: ${nrAll.text} (${nrAll.days} days)\nFrom ${formatDateShort(nrAll.startDate)} to ${formatDateShort(nrAll.endDate)}`;
+            }
+
+            // 3. CAGR
+            updateCAGRMetricOnly();
+        }
+
+        function updateCAGRMetricOnly() {
+            const fullCur = getActiveCurrencyHistory();
+            const durSelect = document.getElementById('cagr-duration-select');
+            const cagrEl = document.getElementById('metric-cagr');
+            const cagrContainer = document.getElementById('metric-cagr-container');
+
+            if (!fullCur.length || !durSelect) {
+                if (cagrEl) cagrEl.textContent = '-';
+                return;
+            }
+
+            const code = durSelect.value || '5Y';
+            const res = calculateCAGR(fullCur, code);
+
+            if (cagrEl) {
+                cagrEl.textContent = res.text;
+                if (res.isPositive) {
+                    cagrEl.className = 'font-bold font-mono text-emerald-600 pr-1';
+                } else {
+                    cagrEl.className = 'font-bold font-mono text-rose-600 pr-1';
+                }
+            }
+
+            const isIndian = (currentStockData && currentStockData.market === 'IN');
+            const currSymbol = (isIndian && currencyMode === 'native') ? '₹' : '$';
+            if (cagrContainer) {
+                cagrContainer.title = `${code} CAGR: ${res.text} (over ${res.years} yrs)\n${formatDateShort(res.startDate)} (${currSymbol}${res.startPrice?.toFixed(2)}) → ${formatDateShort(res.endDate)} (${currSymbol}${res.latestPrice?.toFixed(2)})\nCurrency: ${isIndian && currencyMode === 'native' ? 'INR (₹)' : 'USD ($)'}`;
+            }
+        }
+
         // --- CHARTING ---
         function prepareChartData(ts) {
             if (!ts) return;
@@ -2739,7 +3039,9 @@
                 }
             }
 
+            currentChartData = filteredData;
             renderPriceChart(filteredData);
+            updatePriceActionMetrics(filteredData);
         }
         function renderPriceChart(data) {
             if (chartInstance) chartInstance.destroy();
@@ -2872,6 +3174,10 @@
 
         // --- RULER TOOL (FIXED) ---
         document.getElementById('measure-btn').addEventListener('click', toggleMeasureMode);
+        document.getElementById('cagr-duration-select')?.addEventListener('change', () => {
+            updateCAGRMetricOnly();
+        });
+
 
         function toggleMeasureMode() {
             if (measurementMode) {
