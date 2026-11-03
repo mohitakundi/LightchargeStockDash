@@ -1,9 +1,6 @@
-import { supabase, jsonResponse, corsHeaders, verifyAdmin, detectMarket } from './_utils.js';
+import { supabase, jsonResponse, corsHeaders, verifyAdmin, detectMarket, fetchUSStockWithFallback, verifyStockData } from './_utils.js';
 
 export const config = { runtime: 'edge' };
-
-const ALPHA_VANTAGE_KEY = process.env.ALPHA_VANTAGE_KEY;
-const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 export default async function handler(request) {
     if (request.method === 'OPTIONS') {
@@ -29,6 +26,8 @@ export default async function handler(request) {
         }
 
         const results = [];
+        const url = new URL(request.url);
+        const baseUrl = url.origin;
 
         for (const ticker of tickers) {
             try {
@@ -56,28 +55,31 @@ export default async function handler(request) {
                 let stockData;
 
                 if (market === 'IN') {
-                    // Call Python function - use request URL origin
-                    const url = new URL(request.url);
-                    const baseUrl = url.origin;
-                    const res = await fetch(`${baseUrl}/api/fetch-indian-stock?ticker=${ticker}`);
+                    const res = await fetch(`${baseUrl}/api/fetch-indian-stock?ticker=${encodeURIComponent(ticker)}&market=IN`);
                     if (!res.ok) {
                         const errData = await res.json().catch(() => ({}));
                         throw new Error(errData.error || 'Python function failed');
                     }
                     stockData = await res.json();
+                    verifyStockData(ticker, stockData);
                 } else {
-                    stockData = await fetchUSStock(ticker);
+                    stockData = await fetchUSStockWithFallback(ticker, baseUrl);
                 }
 
-                await supabase
+                const { error: saveErr } = await supabase
                     .from('stock_data')
                     .upsert(
                         { ticker: ticker.toUpperCase(), data: stockData, last_updated: new Date().toISOString() },
                         { onConflict: 'ticker' }
                     );
 
+                if (saveErr) {
+                    throw new Error(`Database error: ${saveErr.message}`);
+                }
+
                 results.push({ ticker, status: 'success' });
             } catch (err) {
+                console.error(`Error refreshing ${ticker}:`, err);
                 results.push({ ticker, status: 'error', error: err.message });
             }
         }
@@ -86,32 +88,4 @@ export default async function handler(request) {
     } catch (error) {
         return jsonResponse({ error: error.message }, 500);
     }
-}
-
-async function fetchUSStock(ticker) {
-    const baseUrl = 'https://www.alphavantage.co/query';
-
-    const overview = await fetch(`${baseUrl}?function=OVERVIEW&symbol=${ticker}&apikey=${ALPHA_VANTAGE_KEY}`).then(r => r.json());
-    await delay(1500);
-    const quote = await fetch(`${baseUrl}?function=GLOBAL_QUOTE&symbol=${ticker}&apikey=${ALPHA_VANTAGE_KEY}`).then(r => r.json());
-    await delay(1500);
-    const income = await fetch(`${baseUrl}?function=INCOME_STATEMENT&symbol=${ticker}&apikey=${ALPHA_VANTAGE_KEY}`).then(r => r.json());
-    await delay(1500);
-    const balance_sheet = await fetch(`${baseUrl}?function=BALANCE_SHEET&symbol=${ticker}&apikey=${ALPHA_VANTAGE_KEY}`).then(r => r.json());
-    await delay(1500);
-    const cashflow = await fetch(`${baseUrl}?function=CASH_FLOW&symbol=${ticker}&apikey=${ALPHA_VANTAGE_KEY}`).then(r => r.json());
-    await delay(1500);
-    const history = await fetch(`${baseUrl}?function=TIME_SERIES_MONTHLY_ADJUSTED&symbol=${ticker}&apikey=${ALPHA_VANTAGE_KEY}`).then(r => r.json());
-
-    return {
-        overview: overview.Information ? {} : overview,
-        quote,
-        income: income.Information ? { annualReports: [] } : income,
-        balance_sheet: balance_sheet.Information ? { annualReports: [] } : balance_sheet,
-        cashflow: cashflow.Information ? { annualReports: [] } : cashflow,
-        history: history.Information ? { 'Monthly Adjusted Time Series': {} } : history,
-        market: 'US',
-        currency: 'USD',
-        last_updated: new Date().toISOString()
-    };
 }

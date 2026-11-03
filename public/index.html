@@ -1387,7 +1387,7 @@
             renderFairValueBar(currentStockData);
             renderValuationGauge(currentStockData);
             renderPSGauge(currentStockData);
-            if (currentStockData.market === 'IN' && currentStockData.analyst_yf) {
+            if (currentStockData.analyst_yf) {
                 renderAnalystRatingsYF(currentStockData.analyst_yf, currentStockData.overview);
             } else {
                 renderAnalystRatings(currentStockData.overview);
@@ -2369,7 +2369,7 @@
                 prepareChartData(data.history['Monthly Adjusted Time Series']);
 
                 // Handle analyst ratings (different format for Indian stocks)
-                if (data.market === 'IN' && data.analyst_yf) {
+                if (data.analyst_yf) {
                     renderAnalystRatingsYF(data.analyst_yf, data.overview);
                 } else {
                     renderAnalystRatings(data.overview);

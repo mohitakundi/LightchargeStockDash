@@ -1,10 +1,11 @@
 """
-Python API route for fetching Indian stock data using yfinance.
+Python API route for fetching stock data (Indian and US) using yfinance.
 Vercel supports Python natively, so this works properly.
-This is a complete port of yfinance_fetcher.py functionality.
+Provides complete fallback and primary fetching for fundamentals, financial statements, and price history.
 """
 from http.server import BaseHTTPRequestHandler
 import json
+import math
 import yfinance as yf
 from datetime import datetime
 from urllib.parse import parse_qs, urlparse
@@ -22,18 +23,26 @@ class handler(BaseHTTPRequestHandler):
         try:
             query = parse_qs(urlparse(self.path).query)
             ticker = query.get('ticker', [''])[0].upper().strip()
+            market_param = query.get('market', [''])[0].upper().strip()
             
             if not ticker:
                 self.send_json({'error': 'Ticker parameter required'}, 400)
                 return
             
-            if not ticker.endswith('.NS') and not ticker.endswith('.BO'):
+            # Determine market
+            if market_param in ['US', 'IN']:
+                market = market_param
+            else:
+                market = 'IN' if (ticker.endswith('.NS') or ticker.endswith('.BO')) else 'US'
+
+            # Format ticker for Indian stocks if needed
+            if market == 'IN' and not ticker.endswith('.NS') and not ticker.endswith('.BO'):
                 ticker += '.NS'
             
             # Encode special characters for yfinance (e.g., M&M.NS -> M%26M.NS)
             yf_ticker_symbol = ticker.replace('&', '%26')
             
-            print(f"[yfinance] Fetching {ticker} (yf: {yf_ticker_symbol})...")
+            print(f"[yfinance] Fetching {ticker} (market: {market}, yf: {yf_ticker_symbol})...")
             stock = yf.Ticker(yf_ticker_symbol)
             info = stock.info
             
@@ -49,17 +58,21 @@ class handler(BaseHTTPRequestHandler):
                 }, 404)
                 return
             
+            currency = 'INR' if market == 'IN' else (info.get('currency') or 'USD')
+            country = 'India' if market == 'IN' else (info.get('country') or 'United States')
+
             # Build complete normalized data
             data = {
-                'overview': self.build_overview(info),
+                'overview': self.build_overview(info, default_currency=currency, default_country=country),
                 'quote': self.build_quote(info),
                 'income': self.build_income(stock),
                 'balance_sheet': self.build_balance_sheet(stock),
+                'cashflow': self.build_cashflow(stock),
                 'history': self.build_history(stock),
                 'analyst_yf': self.build_analyst(info),  # Native yfinance analyst data
-                'market': 'IN',
-                'currency': 'INR',
-                'usd_inr_rate': self.get_exchange_rate(),
+                'market': market,
+                'currency': currency,
+                'usd_inr_rate': self.get_exchange_rate() if market == 'IN' else 83.50,
                 'last_updated': datetime.now().isoformat()
             }
             
@@ -77,10 +90,14 @@ class handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(json.dumps(data, default=str).encode())
 
-    def build_overview(self, info):
+    def build_overview(self, info, default_currency='USD', default_country='United States'):
         def safe_str(key, default='N/A'):
             val = info.get(key)
-            return str(val) if val is not None else default
+            if val is None:
+                return default
+            if isinstance(val, float) and math.isnan(val):
+                return default
+            return str(val)
         
         def format_timestamp(ts):
             if ts is None:
@@ -95,8 +112,8 @@ class handler(BaseHTTPRequestHandler):
             'Name': safe_str('longName', safe_str('shortName', 'Unknown')),
             'Description': safe_str('longBusinessSummary', ''),
             'Exchange': safe_str('exchange'),
-            'Currency': safe_str('currency', 'INR'),
-            'Country': safe_str('country', 'India'),
+            'Currency': safe_str('currency', default_currency),
+            'Country': safe_str('country', default_country),
             'Sector': safe_str('sector'),
             'Industry': safe_str('industry'),
             'MarketCapitalization': safe_str('marketCap'),
@@ -166,7 +183,8 @@ class handler(BaseHTTPRequestHandler):
                 for col in df.columns:
                     def safe_get(key):
                         try:
-                            return str(df.loc[key, col])
+                            val = df.loc[key, col]
+                            return str(val) if val is not None and not (isinstance(val, float) and math.isnan(val)) else '0'
                         except:
                             return '0'
                     report = {
@@ -198,15 +216,18 @@ class handler(BaseHTTPRequestHandler):
                 for col in df.columns:
                     def safe_get(key):
                         try:
-                            return str(df.loc[key, col])
+                            val = df.loc[key, col]
+                            return str(val) if val is not None and not (isinstance(val, float) and math.isnan(val)) else '0'
                         except:
                             return '0'
                     
                     total_liabilities = '0'
                     for key in ['Total Liabilities Net Minority Interest', 'Total Liabilities']:
                         try:
-                            total_liabilities = str(df.loc[key, col])
-                            break
+                            val = df.loc[key, col]
+                            if val is not None and not (isinstance(val, float) and math.isnan(val)):
+                                total_liabilities = str(val)
+                                break
                         except:
                             continue
                     
@@ -229,6 +250,38 @@ class handler(BaseHTTPRequestHandler):
         except Exception as e:
             print(f"[yfinance] Balance sheet error: {e}")
         
+        return {'annualReports': annual_reports, 'quarterlyReports': quarterly_reports}
+
+    def build_cashflow(self, stock):
+        """Build cash flow statement data."""
+        def process_df(df):
+            reports = []
+            if df is not None and not df.empty:
+                for col in df.columns:
+                    def safe_get(key):
+                        try:
+                            val = df.loc[key, col]
+                            return str(val) if val is not None and not (isinstance(val, float) and math.isnan(val)) else '0'
+                        except:
+                            return '0'
+                    report = {
+                        'fiscalDateEnding': col.strftime('%Y-%m-%d') if hasattr(col, 'strftime') else str(col),
+                        'operatingCashflow': safe_get('Operating Cash Flow'),
+                        'capitalExpenditures': safe_get('Capital Expenditure'),
+                        'freeCashFlow': safe_get('Free Cash Flow'),
+                        'netIncome': safe_get('Net Income'),
+                    }
+                    reports.append(report)
+            return reports
+
+        annual_reports = []
+        quarterly_reports = []
+        try:
+            annual_reports = process_df(stock.cashflow)
+            quarterly_reports = process_df(stock.quarterly_cashflow)
+        except Exception as e:
+            print(f"[yfinance] Cashflow error: {e}")
+
         return {'annualReports': annual_reports, 'quarterlyReports': quarterly_reports}
 
     def build_history(self, stock):
